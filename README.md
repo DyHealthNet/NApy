@@ -2,7 +2,8 @@
 
 A fast python tool providing statistical tests and effect sizes for a more comprehensive and informative analysis of mixed type data in the presence of missingness. Written both in C++ and numba and parallelized with OpenMP.
 
-![NApy_Overview](https://github.com/user-attachments/assets/581fecec-63f6-401e-b71b-5eed57667ae0)
+![NApy_Overview](https://github.com/user-attachments/assets/4330d368-a962-493a-9b6d-b26554fabf5b)
+
 
 # Installation on Linux
 
