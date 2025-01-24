@@ -9,7 +9,7 @@ export PYTHONPATH="${PYTHONPATH}:$(pwd)/module"
 # Create conda environment and build directory for cmake.
 source "$(conda info --base)/etc/profile.d/conda.sh"
 echo "Installing conda environment for NApy..."
-conda env create -f environment_linux.yml
+conda env create -f environment.yml
 conda activate napy
 mkdir -p build
 cd build
