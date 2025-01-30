@@ -12,7 +12,7 @@ On a Linux system with the `conda` package manager installed, you can simply ins
 import napy
 import numpy as np
 data = np.random.rand(4, 10)
-res = napy.spearman(data)
+res = napy.spearmanr(data)
 ```
 
 In case the above installation does not work for you, or should give erroneous results, you can also manually install NApy by running:
@@ -29,6 +29,51 @@ cp libnapy.cpython<...>.so ../module
 In the last step above you need to move the resulting `.so` file in the `build/` directory into the directory `module/`.
 
 For easy usage, we recommend adding the path to `module/` to your python include path permanently. Under Linux, this can be done by adding the line `export PYTHONPATH="${PYTHONPATH}:$(pwd)/module"` to the `.bashrc` file. You can then simply use nanpy from any python program by putting the line `import napy` at the top of your implementation. Note that for NApy to run, you need to have the installed environment `napy` activated.
+
+# Installation on Mac
+
+On a MacOS system, you need to handle the installation more manually. First you need to install following packages:
+
+```bash
+brew install libomp
+brew install lapack
+```
+
+Then you need to ensure that the paths are correctly exported. Open your ~/.zshrc file, and add the following lines:
+
+```bash
+export OpenMP_ROOT=$(brew --prefix)/opt/libomp
+
+export LDFLAGS="-L/opt/homebrew/opt/lapack/lib"
+export CPPFLAGS="-I/opt/homebrew/opt/lapack/include"
+
+export PKG_CONFIG_PATH="/opt/homebrew/opt/lapack/lib/pkgconfig"
+```
+Save the file and run zsh to apply changes. Now you are ready to build a conda environment:
+
+```bash
+conda env create -n napy -f environment_mac.yml
+conda activate napy
+```
+
+After this, you need to execute the following lines to build the desired module.
+
+```bash
+mkdir build
+cd build
+cmake -DCMAKE_CXX_STANDARD=17 ..
+make
+```
+
+The resulting .so file will be located in your build/ directory. You can now simply integrate the .so file in your python program by copying your the .so file to your project. Afterwards, you should be able to run this example:
+
+```python
+import napy
+import numpy as np
+data = np.random.rand(4, 10)
+res = napy.spearman(data)
+```
+
 
 # User Manual
 
