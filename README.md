@@ -12,7 +12,7 @@ On a Linux system with the `conda` package manager installed, you can simply ins
 import napy
 import numpy as np
 data = np.random.rand(4, 10)
-res = napy.spearman(data)
+res = napy.spearmanr(data)
 ```
 
 In case the above installation does not work for you, or should give erroneous results, you can also manually install NApy by running:
