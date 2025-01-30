@@ -1,6 +1,5 @@
 #include <stats.hpp>
 #include <boost/math/special_functions/beta.hpp>
-#include <cmath>
 
 std::tuple<double, double, double> get_nans_mwu()
 {
@@ -11,7 +10,7 @@ std::tuple<double, double, double> get_nans_mwu()
 // Helper function for computing binomial coefficients.
 long binom_coeff(int n, int k)
 {
-    return std::lround(1 / ((n + 1) * std::beta(n - k + 1, k + 1)));
+    return std::lround(1 / ((n + 1) * boost::math::beta(n - k + 1, k + 1)));
 }
 
 // Efficient computation of exact pvalues by Andreas Loeffler, translated into C++ from
