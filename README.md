@@ -71,7 +71,7 @@ The resulting .so file will be located in your build/ directory. You can now sim
 import napy
 import numpy as np
 data = np.random.rand(4, 10)
-res = napy.spearman(data)
+res = napy.spearmanr(data)
 ```
 
 
