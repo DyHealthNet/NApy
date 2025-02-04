@@ -28,7 +28,7 @@ cp libnapy.cpython<...>.so ../module
 ```
 In the last step above you need to move the resulting `.so` file in the `build/` directory into the directory `module/`.
 
-For easy usage, we recommend adding the path to `module/` to your python include path permanently. Under Linux, this can be done by adding the line `export PYTHONPATH="${PYTHONPATH}:$(pwd)/module"` to the `.bashrc` file. You can then simply use nanpy from any python program by putting the line `import napy` at the top of your implementation. Note that for NApy to run, you need to have the installed environment `napy` activated.
+For easy usage, we recommend adding the path to `module/` to your python include path permanently. Under Linux, this can be done by adding the line `export PYTHONPATH="${PYTHONPATH}:$(pwd)/module"` to the `.bashrc` file. You can then simply use NApy from any python program by putting the line `import napy` at the top of your implementation. Note that for NApy to run, you need to have the installed environment `napy` activated.
 
 # Installation on Mac
 
@@ -65,7 +65,7 @@ cmake -DCMAKE_CXX_STANDARD=17 ..
 make
 ```
 
-The resulting .so file will be located in your build/ directory. You can now simply integrate the .so file in your python program by copying your the .so file to your project. Afterwards, you should be able to run this example:
+The resulting .so file will be located in your build/ directory. In the last step above you need to move the resulting `.so` file from the `build/` directory into the directory `module/`. For easy usage, we recommend adding the path to `module/` to your python include path permanently. You can then simply use NApy from any python program by putting the line `import napy` at the top of your implementation. Note that for NApy to run, you need to have the installed environment `napy` activated.
 
 ```python
 import napy
