@@ -22,13 +22,16 @@ def _adjust_pvalues_bonferroni(pval_matrix : np.array, ignore_diag : bool) -> np
         # symmetry of Pvalue matrix.
         diag_mask = np.eye(pval_matrix.shape[0], dtype=bool)
         pval_matrix[diag_mask] = np.nan
-        na_mask = ~np.isnan(pval_matrix)
-        mask = ~diag_mask & na_mask
+        non_na_mask = np.isfinite(pval_matrix) & (pval_matrix >= 0) & (pval_matrix <= 1)
+        na_mask = ~non_na_mask
+        pval_matrix[na_mask] = np.nan
+        mask = ~diag_mask & non_na_mask
         submatrix = pval_matrix[mask]
         num_tests = len(submatrix)/2
     else:
         # Count number of non-NA entries in Pvalue matrix.
-        mask = ~np.isnan(pval_matrix)
+        mask = np.isfinite(pval_matrix) & (pval_matrix >= 0) & (pval_matrix <= 1)
+        pval_matrix[~mask] = np.nan
         submatrix = pval_matrix[mask]
         num_tests = len(submatrix)
 
@@ -59,13 +62,15 @@ def _adjust_pvalues_fdr_control(pval_matrix : np.array, method : str, ignore_dia
 
         # Subset non-NA values of upper triangular pvalue matrix into flattened 1D array.
         upper_tri_mask = np.triu(np.ones(pval_matrix.shape, dtype=bool), k=1)
-        non_na_mask = ~np.isnan(pval_matrix)
+        non_na_mask = np.isfinite(pval_matrix) & (pval_matrix >= 0) & (pval_matrix <= 1)
+        pval_matrix[~non_na_mask] = np.nan
         mask = upper_tri_mask & non_na_mask
         pvalues_array = pval_matrix[mask]
 
     else:
         # Take diagonal into account as well.
-        mask = ~np.isnan(pval_matrix)
+        mask = np.isfinite(pval_matrix) & (pval_matrix >= 0) & (pval_matrix <= 1)
+        pval_matrix[~mask] = np.nan
         pvalues_array = pval_matrix[mask]
 
     # Apply scipy's false discovery rate control on flattened pvalue matrix.
@@ -884,15 +889,52 @@ def mwu(bin_data: np.array, cont_data: np.array, nan_value: float = -999, axis: 
 
     return output_dic
 
+
+def simulate_cont_data(num_features, num_samples, na_ratio, na_value):
+    """
+    Simulates given numpy data matrix with num_features as rows, num_samples as columns and
+    a per-feature missing value ratio of na_ratio filled with na_value.
+    """
+    shape = (num_features, num_samples)
+    data_np = np.random.rand(*shape)
+    num_nas = int(num_samples * na_ratio)
+    for row in data_np:
+        indices = np.random.choice(num_samples, num_nas, replace=False)
+        row[indices] = na_value
+    return data_np
+
+
+def simulate_cat_data(num_variables, num_samples, na_ratio, na_value, max_categories):
+    """
+    Simulates categorical numpy data matrix with num_variables as rows, num_samples as columns
+    and a per-variable missing value ration of na_ratio filled with na_value.
+    """
+    # Initialize an empty matrix
+    N = max_categories - 1
+    shape = (num_variables, num_samples)
+    matrix = np.zeros(shape, dtype=float)
+    num_nas = int(num_samples * na_ratio)
+
+    for i in range(num_variables):
+        # Start with a permutation of [0, 1, ..., N] for each row
+        row = np.random.permutation(N + 1)
+
+        # If the row has more columns than N+1, fill the remaining columns with random values from [0, N]
+        if num_samples > N + 1:
+            extra_nans = [na_value] * num_nas
+            extra_values = np.random.randint(0, N + 1, size=num_samples - (N + 1) - num_nas)
+            row = np.concatenate([row, extra_values, extra_nans])
+
+        # Shuffle the row to randomize the order
+        np.random.shuffle(row)
+
+        # Assign the row to the matrix
+        matrix[i, :] = row[:num_samples]
+
+    return matrix
+
+
 if __name__ == "__main__":
-    cont_unadjusted = np.array([[0.        , 0.21975876, 0.74907518, 0.49731136],
-       [0.21975876, 0.        , 0.34668469, 0.54832602],
-       [0.74907518, 0.34668469, 0.        , 0.94735348],
-       [0.49731136, 0.54832602, 0.94735348, 0.        ]])
-    cat_unadjusted = np.array([[0.01735127, 0.13533528, 0.13533528],
-       [0.13533528, 0.01430588, 0.01430588],
-       [0.13533528, 0.01430588, 0.01430588]])
-    mixed_unadjusted = np.array([[0.56471812, 0.65143906, 0.8668779 , 0.18009231],
-       [0.27523352, 0.51269076, 0.51269076, 0.82725935],
-       [0.27523352, 0.51269076, 0.51269076, 0.82725935]])
-    out = joint_multiple_testing_correction(cont_unadjusted, cat_unadjusted, mixed_unadjusted, method='bh')
+    cont_data = simulate_cont_data(10, 20, 0.7, -89.0)
+    res = pearsonr(cont_data, nan_value=-89.0, return_types=['p_unadjusted'])
+    adjusted_pvals = _adjust_pvalues_fdr_control(res['p_unadjusted'], method='bh', ignore_diag=True)
