@@ -253,6 +253,9 @@ def pearsonr(data : np.array, nan_value : float = -999, axis : int = 0, threads 
 
     else: # Use numba-based python implementation.
         corr_mat, pvalue_mat = libnapy_numba.pearson_numba(data, nan_value, threads)
+    
+    # Clip values to range 0 and 1 (rounding errors)
+    pvalue_mat = np.clip(pvalue_mat, a_min=0.0, a_max=1.0)
 
     output_dic = dict()
     # Check which effect sizes and Pvalues to return.
@@ -319,6 +322,9 @@ def spearmanr(data : np.array, nan_value : float = -999, axis : int = 0, threads
         pvalue_mat = np.array(pvalue_mat, copy=False)
     else:
         corr_mat, pvalue_mat = libnapy_numba.spearman_numba(data, nan_value, threads)
+        
+    # Clip values to range 0 and 1 (rounding errors)
+    pvalue_mat = np.clip(pvalue_mat, a_min=0.0, a_max=1.0)
 
     output_dic = dict()
     # Check which effect sizes and Pvalues to return.
@@ -414,6 +420,9 @@ def chi_squared(data : np.array, nan_value : float = -999, axis : int = 0, threa
         result_dict["chi2"] = chi2_mat
         result_dict["phi"] = phi_mat
         result_dict["cramers_v"] = cramers_mat
+    
+    # Clip values to 0 and 1
+    result_dict["p_unadjusted"] =  np.clip(result_dict["p_unadjusted"], a_min=0.0, a_max=1.0)
 
     output_dic = dict()
     # Check which effect sizes and Pvalues to return.
@@ -521,6 +530,9 @@ def anova(cat_data : np.array, cont_data : np.array, nan_value : float = -999, a
         result_dict["p_unadjusted"] = pvalue_mat
         result_dict["F"] = f_mat
         result_dict["np2"] = np2_mat
+        
+    # Clip values to 0 and 1
+    result_dict["p_unadjusted"] =  np.clip(result_dict["p_unadjusted"], a_min=0.0, a_max=1.0)
 
     output_dic = dict()
     # Check which effect sizes and Pvalues to return.
@@ -626,6 +638,9 @@ def kruskal_wallis(cat_data : np.array, cont_data : np.array, nan_value : float 
         result_dict["p_unadjusted"] = pvalue_mat
         result_dict["H"] = h_mat
         result_dict["eta2"] = eta2_mat
+        
+    # Clip values to 0 and 1
+    result_dict["p_unadjusted"] =  np.clip(result_dict["p_unadjusted"], a_min=0.0, a_max=1.0)
 
     output_dic = dict()
     # Check which effect sizes and Pvalues to return.
@@ -655,6 +670,7 @@ def kruskal_wallis(cat_data : np.array, cont_data : np.array, nan_value : float 
         output_dic["p_unadjusted"] = pvalue_mat
 
     return output_dic
+
 
 def ttest(bin_data : np.array, cont_data : np.array, nan_value : float = -999, axis : int = 0,
           threads : int = 1, check_data : bool = False, return_types : list[str] = [],
@@ -735,6 +751,9 @@ def ttest(bin_data : np.array, cont_data : np.array, nan_value : float = -999, a
         result_dict["p_unadjusted"] = pvalue_mat
         result_dict["t"] = t_mat
         result_dict["cohens_d"] = cohens_mat
+    
+    # Clip values to 0 and 1
+    result_dict["p_unadjusted"] =  np.clip(result_dict["p_unadjusted"], a_min=0.0, a_max=1.0)
 
     output_dic = dict()
     # Check which effect sizes and Pvalues to return.
@@ -854,6 +873,9 @@ def mwu(bin_data: np.array, cont_data: np.array, nan_value: float = -999, axis: 
         result_dict["p_unadjusted"] = pvalue_mat
         result_dict["U"] = u_mat
         result_dict["r"] = r_mat
+    
+    # Clip values to 0 and 1
+    result_dict["p_unadjusted"] =  np.clip(result_dict["p_unadjusted"], a_min=0.0, a_max=1.0)
 
     output_dic = dict()
     # Check which effect sizes and Pvalues to return.
