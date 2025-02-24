@@ -343,7 +343,7 @@ def chi2_numba(data : np.ndarray, categories_per_var : np.ndarray, nan_value : i
             else:
                 # Two-sided P-value computation based on chi-squared distribution.
                 num_dofs = (num_cats1-1.0)*(num_cats2-1.0)
-                pvalue = 1.0 - sc.special.chdtr(num_dofs, statistic_value)
+                pvalue = sc.special.chdtrc(num_dofs, statistic_value)
                 cramer_value = np.sqrt(statistic_value / (number_non_nas * np.min(np.array([num_cats1-1, num_cats2-1]))))
                 if is_chi2:
                     effect_matrix[row1, row2] = effect_matrix[row2, row1] = statistic_value
@@ -499,7 +499,7 @@ def kruskal_wallis_numba(cat_data : np.ndarray, cont_data : np.ndarray, nan_valu
                     pvalue_matrix[cat_row, cont_row] = np.nan
                 else:
                     num_dofs = category_groups[cat_row] - 1.0
-                    pvalue_matrix[cat_row, cont_row] = 1.0 - sc.special.chdtr(num_dofs, h_statistic)
+                    pvalue_matrix[cat_row, cont_row] = sc.special.chdtrc(num_dofs, h_statistic)
 
             if compute_h:
                 h_matrix[cat_row, cont_row] = h_statistic
@@ -625,7 +625,7 @@ def ttest_numba(bin_data : np.ndarray, cont_data : np.ndarray,  nan_value : floa
                     cohens_value = (means[0] - means[1]) / np.sqrt((variance[0] + variance[1]) / 2.0)
 
             # Compute P-value based on survival function of t-distribution.
-            pvalue = 2.0 * (1.0 - sc.special.stdtr(dofs, np.abs(statistic_value)))
+            pvalue = 2.0 * (0.5 * sc.special.betainc(0.5 * dofs, 0.5, dofs / (dofs + np.abs(statistic_value)**2)))
             if compute_pvalues:
                 pvalue_matrix[bin_row, cont_row] = pvalue
             if compute_t:
@@ -834,7 +834,7 @@ def mann_whitney_numba(bin_data : np.ndarray, cont_data : np.ndarray,  nan_value
             # Compute P-value based on asymptotic mode if desired and possible.
             if mode == 2 or (mode == 0 and not is_exact_possible):
                 # Compute two-sided P-values from standard normal distribution.
-                pvalue = 2.0 * (1.0 - sc.special.ndtr(np.abs(z_value)))
+                pvalue = 2.0 * (0.5 * sc.special.erfc(np.abs(z_value) / np.sqrt(2)))
                 if compute_pvalues:
                     pvalue_matrix[bin_row, cont_row] = pvalue
                 if compute_u:
@@ -1000,7 +1000,7 @@ def anova_numba(cat_data : np.ndarray, cont_data : np.ndarray, category_groups :
                 continue
             
             # Compute corresponding P-value from F distribution CDF.
-            pvalue = 1.0 - sc.special.fdtr(dof_bg, dof_wg, statistic)
+            pvalue = sc.special.fdtrc(dof_bg, dof_wg, statistic)
             if compute_pvalue:
                 pvalue_matrix[cat_row, cont_row] = pvalue
             if compute_f:
