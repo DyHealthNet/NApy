@@ -269,3 +269,18 @@ result_dict = napy.kruskal_wallis(cat_data, cont_data, nan_value=NAN_VALUE, axis
     statistics, pvalues = napy.mwu(bin_data, cont_data, nan_value=NAN_VALUE, axis=0, threads=1, check_data=False, return_types=['r', 'p_benjamini_hb'], mode='auto')
     # result_dict['p_benjamini_hb'] stores Benjamini-Hochberg corrected P-values, result_dict['r'] stores effect size values
     ```
+
+# Citation
+
+In case you find our tool useful, please cite our corresponding manuscript, e.g. by including the following BibTeX citation
+```
+@misc{woller2025napyefficientstatisticspython,
+title={NApy: Efficient Statistics in Python for Large-Scale Heterogeneous Data with Enhanced Support for Missing Data}, 
+author={Fabian Woller and Lis Arend and Christian Fuchsberger and Markus List and David B. Blumenthal},
+year={2025},
+eprint={2505.00448},
+archivePrefix={arXiv},
+primaryClass={cs.MS},
+url={https://arxiv.org/abs/2505.00448}, 
+}
+```
