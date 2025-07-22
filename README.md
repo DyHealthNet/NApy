@@ -272,7 +272,7 @@ result_dict = napy.kruskal_wallis(cat_data, cont_data, nan_value=NAN_VALUE, axis
 
 # Citation
 
-In case you find our tool useful, please cite our corresponding manuscript, e.g. by including the following BibTeX citation
+In case you find our tool useful, please cite our corresponding manuscript, e.g. by including the following BibTeX citation:
 ```
 @misc{woller2025napyefficientstatisticspython,
 title={NApy: Efficient Statistics in Python for Large-Scale Heterogeneous Data with Enhanced Support for Missing Data}, 
