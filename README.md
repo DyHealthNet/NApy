@@ -75,7 +75,7 @@ data = np.random.rand(4, 10)
 res = napy.spearmanr(data)
 ```
 # How To Integrate New Tests into NApy
-<img width="450" alt="NApy_NewTests" src="https://github.com/user-attachments/assets/9742ecf2-75f7-4d1c-8b00-b6197d2d53a2" align="right" />
+<img width="450" alt="NApy_NewTests" src="https://github.com/user-attachments/assets/ca15aed7-91fa-48d5-9904-0c6936410075" align="right" />
 
 If you want to integrate new tests into NApy, fork the repository, implement the following steps, and please write correctness tests to compare your implementation with existing Python libraries!
 
