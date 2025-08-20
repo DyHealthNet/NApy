@@ -4,8 +4,9 @@ A fast python tool providing statistical tests and effect sizes for a more compr
 
 ![NApy_Overview](https://github.com/user-attachments/assets/4330d368-a962-493a-9b6d-b26554fabf5b)
 
+# Installation
 
-# Installation on Linux
+## Installation on Linux
 
 On a Linux system with the `conda` package manager installed, you can simply install NApy by running `source install.sh`. You can then reassure that the installation was succesful by starting an interactive python session in your shell (e.g. `python -i`) and there running
 ```python
@@ -30,7 +31,7 @@ In the last step above you need to move the resulting `.so` file in the `build/`
 
 For easy usage, we recommend adding the path to `module/` to your python include path permanently. Under Linux, this can be done by adding the line `export PYTHONPATH="${PYTHONPATH}:$(pwd)/module"` to the `.bashrc` file. You can then simply use NApy from any python program by putting the line `import napy` at the top of your implementation. Note that for NApy to run, you need to have the installed environment `napy` activated.
 
-# Installation on Mac
+## Installation on Mac
 
 On a MacOS system, you need to handle the installation more manually. First you need to install following packages:
 
@@ -73,6 +74,25 @@ import numpy as np
 data = np.random.rand(4, 10)
 res = napy.spearmanr(data)
 ```
+# How To Integrate New Tests into NApy
+<img width="450" alt="NApy_NewTests" src="https://github.com/user-attachments/assets/ca15aed7-91fa-48d5-9904-0c6936410075" align="right" />
+
+If you want to integrate new tests into NApy, fork the repository, implement the following steps, and please write correctness tests to compare your implementation with existing Python libraries!
+
+1. Become familiar with mathematical foundations of your statistical test procedure
+2. Is the test procedure efficiently implementable in Numba, i.e. does the statistical test procedure mainly consist of single-passes over input data structures, and computation of sums, averages, ...?
+3. Are all necessary mathematical operations compatible with Numba?
+4. If 2. and 3. are true for your statistical test procedure, implement the test in the <b>Python part of NApy with Numba</b> (more conveniant, less requirement on C++ knowledge):
+    * Add new function in `module/library_numba.py` with corresponding function signature
+5. If 2. and 3. are not true for your statistical test procedure, implement the test in the <b>C++ part of NApy</b>:
+    * Add new source file for respective test in `src/` (e.g. src/new_test.cpp)
+    * Add name of new source file in line 4 of `src/CMakeLists.txt`
+    * Declare function signature in namespace statistics within file `include/stats.hpp`
+    * Recompile NApy after addding the test to its C++ part
+6. Implement Python "wrapper" function in `module/napy.py` (which is supposed to be called from outside user when importing NApy as a Python module):
+    * If Numba-based: call your Python-based implementation of your newly added test with `libnapy_numba.new_test(...)`
+    * If C++-based: call your C++ version of your test with `libnapy.new_test(...)`
+7. Implement correctness tests in the [NApy_benchmark](https://github.com/DyHealthNet/NApy_benchmark) repository under `tests/test_napy.py`. Ideally, they should include testing of all implemented parameters and comparisons against at least two further statistical tools (e.g. Python-based and R-based).
 
 
 # User Manual
@@ -269,3 +289,18 @@ result_dict = napy.kruskal_wallis(cat_data, cont_data, nan_value=NAN_VALUE, axis
     statistics, pvalues = napy.mwu(bin_data, cont_data, nan_value=NAN_VALUE, axis=0, threads=1, check_data=False, return_types=['r', 'p_benjamini_hb'], mode='auto')
     # result_dict['p_benjamini_hb'] stores Benjamini-Hochberg corrected P-values, result_dict['r'] stores effect size values
     ```
+
+# Citation
+
+In case you find our tool useful, please cite our corresponding [manuscript](https://arxiv.org/abs/2505.00448), e.g. by including the following BibTeX citation:
+```
+@misc{woller2025napyefficientstatisticspython,
+title={NApy: Efficient Statistics in Python for Large-Scale Heterogeneous Data with Enhanced Support for Missing Data}, 
+author={Fabian Woller and Lis Arend and Christian Fuchsberger and Markus List and David B. Blumenthal},
+year={2025},
+eprint={2505.00448},
+archivePrefix={arXiv},
+primaryClass={cs.MS},
+url={https://arxiv.org/abs/2505.00448}, 
+}
+```
