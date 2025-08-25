@@ -94,6 +94,11 @@ If you want to integrate new tests into NApy, fork the repository, implement the
     * If C++-based: call your C++ version of your test with `libnapy.new_test(...)`
 7. Implement correctness tests in the [NApy_benchmark](https://github.com/DyHealthNet/NApy_benchmark) repository under `tests/test_napy.py`. Ideally, they should include testing of all implemented parameters and comparisons against at least two further statistical tools (e.g. Python-based and R-based).
 
+# Examples for Interoperability with scikit-learn and PyTorch
+
+We provide two examples showing NApy's interoperability with other libraries:
+* one example for the case of correlation-based hierarchical clustering using scikit-learn's AgglomerativeClustering (`examples/sklearn_clustering.py`)
+* one example for computing principal components on correlation structures using PyTorch's linalg.eig.function (`examples/torch_principal_components.py`)
 
 # User Manual
 
