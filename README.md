@@ -94,6 +94,9 @@ If you want to integrate new tests into NApy, fork the repository, implement the
     * If C++-based: call your C++ version of your test with `libnapy.new_test(...)`
 7. Implement correctness tests in the [NApy_benchmark](https://github.com/DyHealthNet/NApy_benchmark) repository under `tests/test_napy.py`. Ideally, they should include testing of all implemented parameters and comparisons against at least two further statistical tools (e.g. Python-based and R-based).
 
+If you run into any problems while implementing your test, please open an issue in this GitHub repository so we can try to help you.
+
+
 # Examples for Interoperability with scikit-learn and PyTorch
 
 We provide two examples showing NApy's interoperability with other libraries:
