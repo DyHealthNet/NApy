@@ -111,7 +111,7 @@ We here provide an overview of the usability of the implemented tests and their 
 
 - **Pearson Correlation:** The function `napy.pearsonr(data, nan_value=-999.0, axis=0, threads=1, return_types=[], use_numba=True)` computes Pearson's r-squared value on all pairs of given variables, in combination with associated two-sided P-values. The P-values roughly indicate the probability of an uncorrelated system producing datasets that have a Pearson correlation at least as extreme as the one computed from the given pairwise data. Missing values are pairwisely ignored. In case two given input variables have length less than three (which can also happen after removal of NAs), P-values are not well-defined and `np.nan` is returned instead. The function takes the following arguments:
 
-  - data [np.ndarray]: Numpy 2D array storing continuous data values.
+  - data [np.ndarray, torch.Tensor, pd.DataFrame]: 2D table storing continuous data values.
   - nan_value [float, default=-999.0]: Float value representing missing values in the given input data.
   - axis [int, default=0]: Whether to consider rows as variables (axis=0) or columns (axis=1).
   - threads [int, default=1]: How many threads to use in parallel computation.
@@ -133,7 +133,7 @@ We here provide an overview of the usability of the implemented tests and their 
 
 - **Spearman rank correlation:**  The function `nanpy.spearmanr(data, nan_value=999.0, axis=0, threads=1, return_types=[], use_numba=False)`  computes Spearman's rank correlation coefficients and associated two-sided P-values for all pairs of variables in the given data. The P-value roughly indicates the probability of an uncorrelated system producing datasets that have a Spearman correlation at least as extreme as the one computed from the given pairwise data. Missing values are pairwisely ignored in the calculations. In case two given input variables have length less than three (which can also happen after removal of NAs), P-values are not well-defined and `np.nan` is returned instead. The function takes the following arguments:
 
-  - data [np.ndarray]: Numpy 2D array storing data to compute correlation and pvalues for.
+  - data [np.ndarray, torch.Tensor, pd.DataFrame]: 2D table storing data to compute correlation and pvalues for.
   - nan_value [float, default=-999.0]: Float value representing missing values in the given input data.
   - axis [int, default=0]: Whether to consider rows as variables (axis=0) or columns (axis=1).
   - threads [int, default=1]: How many threads to use in parallel computation.
@@ -159,7 +159,7 @@ We here provide an overview of the usability of the implemented tests and their 
 
 - **Chi-squared test on independence:** The function `napy.chi_squared(data, nan_value=-999.0, axis=0, threads=1, check_data=False, return_types=[], use_numba=True)` runs chi-squared tests on independence on all pairs of given variables. It returns the statistics, effect sizes and P-values declared in the parameter `return_types`. Missing values are pairwisely ignored in the calculation. For each variable, categories need to be integer-encoded by integers in ascending order starting from zero. In case some category should no longer be present due to missing values, this will lead to the chi-squared statistic being undefined and will hence return `numpy.nan` for the respective pair of variables. This also happens in case a variable should only consist of one category. The function takes the following arguments:
 
-  - data [np.ndarray]: Numpy 2D array storing data to compute correlation and pvalues for.
+  - data [np.ndarray, torch.Tensor, pd.DataFrame]: 2D table storing data to compute correlation and pvalues for.
   - nan_value [float, default=-999.0]: Float value representing missing values in the given input data.
   - axis [int, default=0]: Whether to consider rows as variables (axis=0) or columns (axis=1).
   - threads [int, default=1]: How many threads to use in parallel computation.
@@ -188,8 +188,8 @@ We here provide an overview of the usability of the implemented tests and their 
 
 - **One-way-ANOVA:** The function `napy.anova(cat_data, cont_data, nan_value=-999.0, axis=0, threads=1, check_data=False, return_types=[], use_numba=True)` runs ANOVA tests between all pairwise combinations of variables from `cat_data` and `cont_data`. It returns the effect sizes, statistic values, and P-values as declared in the parameter `return_types` (with two-sided P-values based on the computed F statistic value). Missing values are pairwisely ignored. Categories need to be integer-encoded in ascending order starting from zero. In case some category should no longer be present due to missing values, this will lead to the F-statistic being undefined and will hence return `numpy.nan` for the respective pair of variables. The same happens in case a variable should only consist of one category. The function takes the following arguments:
   
-  - cat_data [np.ndarray]: Numpy 2D array storing categorical variables data.
-  - cont_data [np.ndarray]: Numpy 2D array storing continuous variables data.
+  - cat_data [np.ndarray, torch.Tensor, pd.DataFrame]: 2D table storing categorical variables data.
+  - cont_data [np.ndarray, torch.Tensor, pd.DataFrame]: 2D table storing continuous variables data.
   - axis [int, default=0]: Whether to consider rows in both input matrices as variables (axis=0) or columns (axis=1).
   - threads [int, default=1]: How many threads to use in parallel computations.
   - check_data [bool, default=False]: Whether or not to perform additional checks on the format of categorical input data. It introduces a slight overhead in runtime.
@@ -214,8 +214,8 @@ result_dict = napy.anova(cat_data, cont_data, nan_value=NAN_VALUE, axis=0, threa
 
 - **Kruskal-Wallis test:** The function `napy.kruskal_wallis(cat_data, cont_data, nan_value=-999.0, axis=0, threads=1, check_data=False, return_types=[], use_numba=False)` runs Kruskal-Wallis test between all pairwise combinations of variables from `cat_data` and `cont_data`. It computes the effect size and statistic declared in parameter `return_types` and P-values equal to the survival function of the chi-square distribution evaluated at H. Missing values are pairwisely ignored. Categories need to be integer-encoded in ascending order starting from zero. In case some category should no longer be present due to missing values, this will lead to the H-statistic being undefined and will hence return `numpy.nan` for the respective pair of variables. The same happens in case a variable should only consist of one category. The function takes the following arguments:
   
-  - cat_data [np.ndarray]: Numpy 2D array storing categorical variables data.
-  - cont_data [np.ndarray]: Numpy 2D array storing continuous variables data.
+  - cat_data [np.ndarray, torch.Tensor, pd.DataFrame]: 2D table storing categorical variables data.
+  - cont_data [np.ndarray, torch.Tensor, pd.DataFrame]: 2D table array storing continuous variables data.
   - axis [int, default=0]: Whether to consider rows in both input matrices as variables (axis=0) or columns (axis=1).
   - threads [int, default=1]: How many threads to use in parallel computations.
   - check_data [bool, default=False]: Whether or not to perform additional checks on the format of categorical input data. It introduces a slight overhead in runtime.
@@ -240,8 +240,8 @@ result_dict = napy.kruskal_wallis(cat_data, cont_data, nan_value=NAN_VALUE, axis
 
 - **Student's and Welch's t-test:** The function `napy.ttest(bin_data, cont_data, nan_value = -999.0, axis=0, threads=1, check_data=False, return_types=[], equal_var=True, use_numba=True)` runs t-tests between all pairwise combinations of variables from `bin_data` and `cont_data`. Depending whether equal variances of binary sample groups are assumed, we either run Student's t-test (`equal_var=True`) or Welch's t-test (`equal_var=False`). It computes the effect size / statistic value declared in parameter `return_types` and P-values equal to twice the value of the survival function of the t-distribution at the absolute value of the corresponding t-value. Missing values are pairwisely ignored, i.e. if a missing value occurs in the binary variable, the matching position in the continuous data is also ignored. Binary categories need to be integer-encoded (`0,1`). In case one category should no longer be present due to removal of missing values, this will lead to the t-statistic being undefined and will hence return `numpy.nan` for the respective pair of variables. The same happens in case a variable should only consist of one category. The function takes the following arguments:
 
-  - bin_data [np.ndarray] : Numpy 2D array storing binary variables data.
-  - cont_data [np.ndarray]: Numpy 2D array storing continuous variable data.
+  - bin_data [np.ndarray, torch.Tensor, pd.DataFrame] : 2D table storing binary variables data.
+  - cont_data [np.ndarray, torch.Tensor, pd.DataFrame]: 2D table storing continuous variable data.
   - axis [int, default=0]: Whether to consider rows in both input matrices as variables (axis=0) or columns (axis=1).
   - threads [int, default=1]: How many threads to use in parallel computations.
   - check_data [bool, default=False]: Whether or not to perform additional checks on the format of categorical input data. It introduces a slight overhead in runtime.
@@ -268,9 +268,9 @@ result_dict = napy.kruskal_wallis(cat_data, cont_data, nan_value=NAN_VALUE, axis
 
 - **Mann-Whitney-U test:** The function `napy.mwu(bin_data, cont_data, nan_value = -999.0, axis=0, threads=1, check_data=False, return_types=[], mode='auto')` runs Mann-Whitney-U tests between all pairwise combinations of variables from `bin_data` and `cont_data`. Depending on the chosen `mode` and the input data, either the exact P-value calculation or the much faster asymptotic approximation based on the z-value is used. The function computes the effect size / statistic value declared in parameter `return_types` and two-sided P-values either from the exact calculation of the U-distribution or the survival function of the standard normal distribution, depending on `mode`. Missing values are pairwisely ignored, i.e. if a missing value occurs in the binary variable, the matching position in the continuous data is also ignored. Binary categories need to be integer-encoded (`0,1`). In case one category should no longer be present due to removal of missing values, this will lead to the U-statistic being undefined and will hence return `numpy.nan` for the respective pair of variables. The same happens in case a variable should only consist of one category. The function takes the following arguments:
 
-  - bin_data [np.ndarray] : Numpy 2D array storing binary variables data.
+  - bin_data [np.ndarray, torch.Tensor, pd.DataFrame] : 2D table storing binary variables data.
 
-  - cont_data [np.ndarray]: Numpy 2D array storing continuous variable data.
+  - cont_data [np.ndarray, torch.Tensor, pd.DataFrame]: 2D table storing continuous variable data.
 
   - axis [int, default=0]: Whether to consider rows in both input matrices as variables (axis=0) or columns (axis=1).
 

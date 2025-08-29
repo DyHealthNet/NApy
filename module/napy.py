@@ -2,6 +2,8 @@ import libnapy
 import libnapy_numba
 import numpy as np
 import scipy as sc
+import torch
+import pandas as pd
 
 def _adjust_pvalues_bonferroni(pval_matrix : np.array, ignore_diag : bool) -> np.array:
     """
@@ -133,6 +135,39 @@ def _check_input_data_two_matrices(cont_data : np.ndarray, cat_data : np.ndarray
     if axis==1 and cont_data.shape[0] != cat_data.shape[0]:
         raise ValueError(f"Row dimensions of categorical and continuous data do not match.")
 
+def parse_input_single_matrix(cont_data):
+    if isinstance(cont_data, torch.Tensor):
+        return cont_data.numpy().astype(np.float64)
+    elif isinstance(cont_data, pd.DataFrame):
+        return cont_data.copy().to_numpy(dtype=np.float64)
+    elif isinstance(cont_data, np.ndarray):
+        return cont_data.copy().astype(np.float64)
+    else:
+        return raiseValueError("Input error: data has invalid datatype, needs to be either torch.Tensor, pd.DataFrame, or np.ndarray!")
+
+def transform_output(output_dic, axis, data_one, data_two=None):
+    if isinstance(data_one, torch.Tensor):
+        # Transform all output matrices in dictionary to torch tensors.
+        for k, v in output_dic.items():
+            output_dic[k] = torch.from_numpy(v)
+        return output_dic
+    elif isinstance(data_one, pd.DataFrame):
+        # Transform to pandas dataframe, with corresponding variables labels.
+        for k, v in output_dic.items():
+            if axis==0:
+                if data_two is None: # Result matrix is symmetric with same rows and columns.
+                    output_dic[k] = pd.DataFrame(v, index=data_one.index, columns=data_one.index)
+                else: # Result matrix's index is data_one's index and columns are data_two's index.
+                    output_dic[k] = pd.DataFrame(v, index=data_one.index, columns=data_two.index)
+            else:
+                if data_two is None:
+                    output_dic[k] = pd.DataFrame(v, index=data_one.columns, columns=data_one.columns)
+                else: # Result matrix's index is data_one's index and columns are data_two's index.
+                    output_dic[k] = pd.DataFrame(v, index=data_one.columns, columns=data_two.columns)
+        return output_dic
+    else:
+        return output_dic
+
 def joint_multiple_testing_correction(cont_matrix: np.ndarray, cat_matrix : np.ndarray, mixed_matrix : np.ndarray,
                                       method : str = ['bonferroni', 'benjamini-hb', 'benjamini-yek']):
     # For Bonferroni correction, simply count number of performed tests.
@@ -224,6 +259,9 @@ def pearsonr(data : np.array, nan_value : float = -999, axis : int = 0, threads 
         'p_unadjusted', 'p_bonferroni', 'p_benjamini_hb', 'p_benjamini_yek', and 'r2'. If an empty list is
         passed, every possible data matrix is returned.
     """
+    input_data = data
+    data = parse_input_single_matrix(data)
+
     # Check validity of input data.
     _check_input_data_single_matrix(data, threads, axis)
 
@@ -277,6 +315,8 @@ def pearsonr(data : np.array, nan_value : float = -999, axis : int = 0, threads 
     if 'p_unadjusted' in return_types:
         output_dic["p_unadjusted"] = pvalue_mat
 
+    output_dic = transform_output(output_dic, axis, input_data)
+
     return output_dic
 
 
@@ -296,6 +336,9 @@ def spearmanr(data : np.array, nan_value : float = -999, axis : int = 0, threads
         'p_unadjusted', 'p_bonferroni', 'p_benjamini_hb', 'p_benjamini_yek', and 'rho'. If an empty list is
         passed, every possible data matrix is returned.
     """
+    input_data = data
+    data = parse_input_single_matrix(data)
+
     _check_input_data_single_matrix(data, threads, axis)
     # Check input of return types list.
     if not set(return_types).issubset({'rho', 'p_unadjusted', 'p_bonferroni', 'p_benjamini_hb', 'p_benjamini_yek'}):
@@ -346,6 +389,8 @@ def spearmanr(data : np.array, nan_value : float = -999, axis : int = 0, threads
     if 'p_unadjusted' in return_types:
         output_dic["p_unadjusted"] = pvalue_mat
 
+    output_dic = transform_output(output_dic, axis, input_data)
+
     return output_dic
 
 
@@ -365,6 +410,9 @@ def chi_squared(data : np.array, nan_value : float = -999, axis : int = 0, threa
         If an empty list is passed, every possible data matrix is returned.
         use_numba (bool, optional): Whether to use numba-parallelized python implementation.
     """
+    input_data = data
+    data = parse_input_single_matrix(data)
+
     _check_input_data_single_matrix(data, threads, axis)
     # Check input of return types list.
     if not set(return_types).issubset({'chi2', 'phi', 'cramers_v', 'p_unadjusted', 'p_bonferroni', 'p_benjamini_hb', 'p_benjamini_yek'}):
@@ -454,6 +502,8 @@ def chi_squared(data : np.array, nan_value : float = -999, axis : int = 0, threa
     if 'p_unadjusted' in return_types:
         output_dic["p_unadjusted"] = pvalue_mat
 
+    output_dic = transform_output(output_dic, axis, input_data)
+
     return output_dic
 
 
@@ -475,6 +525,12 @@ def anova(cat_data : np.array, cont_data : np.array, nan_value : float = -999, a
         If an empty list is passed, every possible data matrix is returned.
         use_numba (bool, optional): Whether or not to use numba-based python implementation.
     """
+    input_cat = cat_data
+    input_cont = cont_data
+
+    cont_data = parse_input_single_matrix(cont_data)
+    cat_data = parse_input_single_matrix(cat_data)
+
     _check_input_data_two_matrices(cont_data, cat_data, threads, axis)
     # Check input of return types list.
     if not set(return_types).issubset({'F', 'np2', 'p_unadjusted', 'p_bonferroni', 'p_benjamini_hb', 'p_benjamini_yek'}):
@@ -561,6 +617,8 @@ def anova(cat_data : np.array, cont_data : np.array, nan_value : float = -999, a
     if 'p_unadjusted' in return_types:
         output_dic["p_unadjusted"] = pvalue_mat
 
+    output_dic = transform_output(output_dic, axis, input_cat, input_cont)
+
     return output_dic
 
 
@@ -581,6 +639,12 @@ def kruskal_wallis(cat_data : np.array, cont_data : np.array, nan_value : float 
         If an empty list is passed, every possible data matrix is returned.
         use_numba (bool, optional): Whether or not to use numba-based implementation.
     """
+    input_cat = cat_data
+    input_cont = cont_data
+
+    cont_data = parse_input_single_matrix(cont_data)
+    cat_data = parse_input_single_matrix(cat_data)
+
     _check_input_data_two_matrices(cont_data, cat_data, threads, axis)
     # Check input of return types list.
     if not set(return_types).issubset(
@@ -669,6 +733,8 @@ def kruskal_wallis(cat_data : np.array, cont_data : np.array, nan_value : float 
     if 'p_unadjusted' in return_types:
         output_dic["p_unadjusted"] = pvalue_mat
 
+    output_dic = transform_output(output_dic, axis, input_cat, input_cont)
+
     return output_dic
 
 
@@ -693,6 +759,12 @@ def ttest(bin_data : np.array, cont_data : np.array, nan_value : float = -999, a
             Welch's t-test). Defaults to True.
         use_numba (bool, optional): Whether or not to use numba-based python implementation. Defaults to True.
     """
+    input_bin = bin_data
+    input_cont = cont_data
+
+    cont_data = parse_input_single_matrix(cont_data)
+    bin_data = parse_input_single_matrix(bin_data)
+
     _check_input_data_two_matrices(cont_data, bin_data, threads, axis)
     # Check input of return types list.
     if not set(return_types).issubset(
@@ -782,6 +854,8 @@ def ttest(bin_data : np.array, cont_data : np.array, nan_value : float = -999, a
     if 'p_unadjusted' in return_types:
         output_dic["p_unadjusted"] = pvalue_mat
 
+    output_dic = transform_output(output_dic, axis, input_bin, input_cont)
+
     return output_dic
 
 def mwu(bin_data: np.array, cont_data: np.array, nan_value: float = -999, axis: int = 0,
@@ -810,6 +884,12 @@ def mwu(bin_data: np.array, cont_data: np.array, nan_value: float = -999, axis: 
         on small data that you can manually check.
         use_numba (bool, optional): Whether or not to use numba based implementation of MWU.
     """
+    input_bin = bin_data
+    input_cont = cont_data
+
+    cont_data = parse_input_single_matrix(cont_data)
+    bin_data = parse_input_single_matrix(bin_data)
+
     _check_input_data_two_matrices(cont_data, bin_data, threads, axis)
     if not mode in ['auto', 'asymptotic', 'exact']:
         raise ValueError(f"Invalid Mann-Whitney-U test mode : {mode}.")
@@ -903,6 +983,8 @@ def mwu(bin_data: np.array, cont_data: np.array, nan_value: float = -999, axis: 
 
     if 'p_unadjusted' in return_types:
         output_dic["p_unadjusted"] = pvalue_mat
+
+    output_dic = transform_output(output_dic, axis, input_bin, input_cont)
 
     return output_dic
 

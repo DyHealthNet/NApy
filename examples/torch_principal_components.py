@@ -4,17 +4,14 @@ import torch
 
 # Read numerical data.
 df = pd.read_csv('example_numerical.csv', index_col=0)
-data_matrix = df.to_numpy()
+data_tensor = torch.tensor(df.to_numpy())
 
 # Compute NA-aware Pearson Correlation with NApy.
-spearman_results = napy.spearmanr(data=data_matrix,
+spearman_results = napy.spearmanr(data=data_tensor,
                                 axis=1,
                                 nan_value=-99.0,
                                 threads=1)
-correlation_matrix = spearman_results['rho']
-
-# Convert to PyTorch tensor.
-correlation_tensor = torch.from_numpy(correlation_matrix).float()
+correlation_tensor = spearman_results['rho']
 
 # Eigen-decomposition of correlation matrix.
 eigenvalues, eigenvectors = torch.linalg.eig(correlation_tensor)
