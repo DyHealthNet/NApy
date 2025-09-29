@@ -1,13 +1,19 @@
 name: napy
 channels:
+  - pytorch
   - conda-forge
   - defaults
 dependencies:
   - blas=1.0
   - boost-cpp=1.85.0
+  - bottleneck=1.4.2
   - bzip2=1.0.8
-  - ca-certificates=2024.12.31
+  - ca-certificates=2025.9.9
+  - filelock=3.17.0
+  - gmp=6.3.0
+  - gmpy2=2.2.1
   - icu=75.1
+  - jinja2=3.1.6
   - libboost=1.85.0
   - libboost-devel=1.85.0
   - libboost-headers=1.85.0
@@ -19,26 +25,42 @@ dependencies:
   - libopenblas=0.3.21
   - libsqlite=3.45.2
   - libzlib=1.3.1
-  - llvm-openmp=19.1.7
+  - llvm-openmp=14.0.6
+  - markupsafe=3.0.2
+  - mpc=1.3.1
+  - mpfr=4.2.1
+  - mpmath=1.3.0
   - ncurses=6.4
+  - networkx=3.5
+  - numexpr=2.11.0
   - openssl=3.4.0
+  - pandas=2.3.2
   - pip=25.0
   - pybind11=2.13.6
   - pybind11-global=2.13.6
   - python=3.11.8
+  - python-dateutil=2.9.0post0
+  - python-tzdata=2025.2
+  - pytorch=2.5.1
+  - pytz=2025.2
+  - pyyaml=6.0.2
   - readline=8.2
   - setuptools=72.1.0
+  - six=1.17.0
   - sqlite=3.45.2
+  - sympy=1.14.0
   - tk=8.6.13
+  - typing_extensions=4.15.0
   - tzdata=2025a
   - wheel=0.45.1
   - xz=5.4.6
+  - yaml=0.2.5
   - zlib=1.3.1
   - zstd=1.5.6
   - pip:
       - llvmlite==0.44.0
       - numba==0.61.0
       - numba-scipy==0.4.0
-      - numpy==1.26.0
+      - numpy==1.26.4
       - scipy==1.11.0
 prefix: /opt/anaconda3/envs/napy
