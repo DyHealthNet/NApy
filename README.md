@@ -6,7 +6,19 @@ A fast python tool providing statistical tests and effect sizes for a more compr
 
 # Installation
 
-## Installation on Linux
+NApy is available as a [Python package](https://pypi.org/project/napypi/) for most Windows, Linux, and macOS architectures (64-bit systems only). You can install via
+
+```bash
+pip install napypi
+```
+
+
+In order to use NApy's functionality as shown in the documentation below, you can then simply import NApy via
+```python
+import napypi as napy
+```
+
+## Manual compilation on Linux
 
 On a Linux system with the `conda` package manager installed, you can simply install NApy by running `source install.sh`. You can then reassure that the installation was succesful by starting an interactive python session in your shell (e.g. `python -i`) and there running
 ```python
@@ -31,7 +43,7 @@ In the last step above you need to move the resulting `.so` file in the `build/`
 
 For easy usage, we recommend adding the path to `module/` to your python include path permanently. Under Linux, this can be done by adding the line `export PYTHONPATH="${PYTHONPATH}:$(pwd)/module"` to the `.bashrc` file. You can then simply use NApy from any python program by putting the line `import napy` at the top of your implementation. Note that for NApy to run, you need to have the installed environment `napy` activated.
 
-## Installation on Mac
+## Manual compilation on Mac
 
 On a MacOS system, you need to handle the installation more manually. First you need to install following packages:
 
