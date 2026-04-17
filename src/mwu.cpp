@@ -150,7 +150,7 @@ std::tuple<double, double, double> pairwise_nan_mwu(const DataMatrix& bin_data, 
     if (sigma == 0.0)
         r_effect = std::numeric_limits<double>::quiet_NaN();
     else
-        r_effect = z_value / std::sqrt(n);
+        r_effect = std::abs(z_value) / std::sqrt(n);
 
     if (mode == "asymptotic" || (mode == "auto" && !is_exact_possible))
     {

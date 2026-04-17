@@ -86,16 +86,19 @@ std::pair<double, double> pairwise_nan_spearman(const DataMatrix& data,
                 // Set averaged rank to all remaining elements in subset of row.
                 for (const auto& el : ranksRow2[iV])
                 {
-                    // updatedRanks2[el] = average;
-                    rankSum2 += average;
-                    rankSumSquared2 += average*average;
-                    // Also directly compute index-matching product for nominator of Pearson correlation.
-                    one_times_two += average * updatedRanks1[el];
+                    if (data(row1, el)!= na_value)
+                    {
+                        // updatedRanks2[el] = average;
+                        rankSum2 += average;
+                        rankSumSquared2 += average*average;
+                        // Also directly compute index-matching product for nominator of Pearson correlation.
+                        one_times_two += average * updatedRanks1[el];
+                    }
                 } 
-            }
             // Number of elements in current container that were deleted.
             const int subtract_extra = ranksRow2[iV].size() - subsetSize;
             subtractRight += subtract_extra;
+            }
         }
     }
 
