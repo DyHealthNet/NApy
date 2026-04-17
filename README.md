@@ -290,7 +290,7 @@ result_dict = napy.kruskal_wallis(cat_data, cont_data, nan_value=NAN_VALUE, axis
 
   - check_data [bool, default=False]: Whether or not to perform additional checks on the format of categorical input data. It introduces a slight overhead in runtime.
 
-  - return_types [list[str], default=[]]: Which statistic results to return. Can be a list containing any of the following entries: `'t'` for the corresponding value of the t statistic,  and `'cohens_d'` for Cohen's D effect size, `'p_unadjusted'` for unadjusted two-sided P-values, `'p_bonferroni'` for Bonferroni-corrected P-values,  `'p_benjamini_hb'` for Benjamini-Hochberg correction, and `p_benjamini_yek'` for Bejamini-Yekutieli correction. If the list is emtpy, all available results will be returned.
+  - return_types [list[str], default=[]]: Which statistic results to return. Can be a list containing any of the following entries: `'U'` for the corresponding value of the U statistic,  and `'r'` for the absolute value of the Pearson r effect size, `'p_unadjusted'` for unadjusted two-sided P-values, `'p_bonferroni'` for Bonferroni-corrected P-values,  `'p_benjamini_hb'` for Benjamini-Hochberg correction, and `p_benjamini_yek'` for Bejamini-Yekutieli correction. If the list is emtpy, all available results will be returned.
 
   - use_numba [bool, default=False]: Whether to use the numba-based or C++ implementation of the test.
 
@@ -329,5 +329,4 @@ Fabian Woller, Lis Arend, Christian Fuchsberger, Markus List, David B Blumenthal
     url = {https://doi.org/10.1093/gigascience/giaf140},
 }
 ```
-
 
