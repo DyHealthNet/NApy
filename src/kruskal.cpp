@@ -9,7 +9,7 @@ std::tuple<double, double, double> get_nans_kruskal()
 
 std::tuple<double, double, double> pairwise_nan_kruskal(const DataMatrix& cat_data, 
     int iCat, int category_groups, const vec2d& rowRanks, 
-    double na_value)
+    double na_value, bool ignore_empty_groups)
 {
     // Iterate over each row and extract subvector of pairwise non-NAN features.
     int numDataPoints = 0;
@@ -66,13 +66,26 @@ std::tuple<double, double, double> pairwise_nan_kruskal(const DataMatrix& cat_da
 
     // Compute H statistic value by aggregating per-category rank sums.
     double h_statistic = 0.0;
+    int empty_group_counter = 0;
     for (int iC = 0; iC < category_groups; ++iC)
     {
-        if (groupSizes[iC] == 0)
+        if (groupSizes[iC] == 0 && !ignore_empty_groups)
             return get_nans_kruskal();
-
+        if (groupSizes[iC] == 0 && ignore_empty_groups)
+        {   
+            ++empty_group_counter; 
+            continue;
+        }
         h_statistic += groupRankSums[iC]*groupRankSums[iC]/groupSizes[iC];
     }
+
+    if (ignore_empty_groups)
+    {
+        category_groups -= empty_group_counter;
+        if (category_groups < 2)
+            return get_nans_kruskal();
+    }
+
     h_statistic *= 12.0/(numDataPoints*numDataPoints + numDataPoints);
     h_statistic -= 3.0*(numDataPoints+1);
 
@@ -106,7 +119,7 @@ std::tuple<double, double, double> pairwise_nan_kruskal(const DataMatrix& cat_da
 
 std::map<std::string, DataMatrix> statistics::kruskal_wallis_with_nans(const DataMatrix& cat_data,
     const DataMatrix& cont_data, const std::vector<int>& category_groups, double na_value, 
-    const std::set<std::string>& return_types)
+    const std::set<std::string>& return_types, bool ignore_empty_groups)
 {
     const int num_cat_variables = cat_data.rows();
     const int num_cont_variables = cont_data.rows();
@@ -176,7 +189,7 @@ std::map<std::string, DataMatrix> statistics::kruskal_wallis_with_nans(const Dat
         for (int iCat = 0; iCat < num_cat_variables; ++iCat)
         {
             std::tuple<double, double, double> results = pairwise_nan_kruskal(cat_data, 
-                iCat, category_groups[iCat], row_map, na_value);
+                iCat, category_groups[iCat], row_map, na_value, ignore_empty_groups);
             if (compute_pval)
                 pvalues(iCat, iCont) = std::get<0>(results);
             if (compute_h)

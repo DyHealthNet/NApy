@@ -41,7 +41,8 @@ namespace statistics
     // NAN-aware Kruskal-Wallis test.
     std::map<std::string, DataMatrix> kruskal_wallis_with_nans(const DataMatrix& cat_data, 
         const DataMatrix& cont_data, const std::vector<int>& category_groups, 
-        double na_value, const std::set<std::string>& effect_size);
+        double na_value, const std::set<std::string>& effect_size, 
+        bool ignore_empty_groups);
 
     // NAN-aware Student's and Welch's T-test.
     std::map<std::string, DataMatrix> ttest(const DataMatrix& bin_data, const DataMatrix& cont_data,

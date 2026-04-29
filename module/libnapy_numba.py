@@ -358,7 +358,8 @@ def chi2_numba(data : np.ndarray, categories_per_var : np.ndarray, nan_value : i
 
 @njit(parallel=True, fastmath=False, nogil=True)
 def kruskal_wallis_numba(cat_data : np.ndarray, cont_data : np.ndarray, nan_value : float, category_groups : np.ndarray,
-                         num_threads : int, compute_pvalue : bool, compute_h : bool, compute_np2 : bool):
+                         num_threads : int, compute_pvalue : bool, compute_h : bool, compute_np2 : bool,
+                         ignore_empty_groups : bool):
     """
     Computes numba-optimized Kruskal-Wallis test with pairwise removal of NAN-values.
 
@@ -464,14 +465,19 @@ def kruskal_wallis_numba(cat_data : np.ndarray, cont_data : np.ndarray, nan_valu
             # Compute H statistic value by aggregating per-category rank sums.
             h_statistic = 0.0
             is_empty_category = False
+            empty_group_counter = 0
             for iC in range(category_groups[cat_row]):
-                if group_sizes[iC] == 0:
+                if group_sizes[iC] == 0 and ignore_empty_groups == False:
                     # H statistic is not well-defined and return NAs on all outputs.
                     is_empty_category = True
+                elif group_sizes[iC] == 0 and ignore_empty_groups == True:
+                    # Skip empty category and do not include it in H statistic computation.
+                    empty_group_counter = empty_group_counter + 1
+                    continue
                 else:
                     h_statistic = h_statistic + group_rank_sums[iC]*group_rank_sums[iC]/group_sizes[iC]
 
-            if is_empty_category:
+            if is_empty_category and ignore_empty_groups == False:
                 if compute_pvalue:
                     pvalue_matrix[cat_row, cont_row] = np.nan
                 if compute_h:
@@ -479,6 +485,11 @@ def kruskal_wallis_numba(cat_data : np.ndarray, cont_data : np.ndarray, nan_valu
                 if compute_np2:
                     np2_matrix[cat_row, cont_row] = np.nan
                 continue
+            
+            if is_empty_category and ignore_empty_groups == True:
+                num_categories = category_groups[cat_row] - empty_group_counter
+            else:
+                num_categories = category_groups[cat_row]
 
             h_statistic = h_statistic * 12.0/(number_non_nas * number_non_nas + number_non_nas)
             h_statistic = h_statistic - 3.0*(number_non_nas + 1)
@@ -489,16 +500,16 @@ def kruskal_wallis_numba(cat_data : np.ndarray, cont_data : np.ndarray, nan_valu
 
             # Compute eta-squared effect size if valid.
             if compute_np2:
-                if number_non_nas - category_groups[cat_row] <= 0:
+                if number_non_nas - num_categories <= 0:
                     np2_matrix[cat_row, cont_row] = np.nan
                 else:
-                    np2_matrix[cat_row, cont_row] = (h_statistic-category_groups[cat_row]+1)/(number_non_nas - category_groups[cat_row])
+                    np2_matrix[cat_row, cont_row] = (h_statistic-num_categories+1)/(number_non_nas - num_categories)
 
             if compute_pvalue:
-                if category_groups[cat_row] < 2:
+                if num_categories < 2:
                     pvalue_matrix[cat_row, cont_row] = np.nan
                 else:
-                    num_dofs = category_groups[cat_row] - 1.0
+                    num_dofs = num_categories - 1.0
                     pvalue_matrix[cat_row, cont_row] = sc.special.chdtrc(num_dofs, h_statistic)
 
             if compute_h:
