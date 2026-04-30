@@ -8,7 +8,7 @@ std::tuple<double, double, double> get_nan_three_tuple()
 }
 
 std::tuple<double, double, double> pairwise_nan_anova(const DataMatrix& cat_data, const DataMatrix& cont_data,
-    int rowCat, int rowCont, int numCats, double na_value)
+    int rowCat, int rowCont, int numCats, double na_value, bool ignore_empty_groups)
 {
     const int num_samples = cat_data.cols();
     
@@ -42,14 +42,30 @@ std::tuple<double, double, double> pairwise_nan_anova(const DataMatrix& cat_data
 
     // Aggregate per-group sums and sum of squares.
     double ss_bg = 0.0;
+    int empty_group_counter = 0;
     for (int iC = 0; iC < numCats; ++iC)
     {
-        if (group_counts[iC]==0)
+        if (group_counts[iC]==0 && !ignore_empty_groups)
         {
             return get_nan_three_tuple();
         }
+        if (group_counts[iC]==0 && ignore_empty_groups)
+        {
+            empty_group_counter++;
+            continue;
+        }
         ss_bg += group_sums[iC]*group_sums[iC] / group_counts[iC];
     }
+
+    if(ignore_empty_groups)
+    {
+        numCats -= empty_group_counter;
+        if (numCats < 2)
+        {
+            return get_nan_three_tuple();
+        }
+    }
+
     ss_bg -= total_sum*total_sum / total_count;
 
     // Compute within group variances as difference of totals and between groups.
@@ -108,7 +124,9 @@ std::tuple<double, double, double> pairwise_nan_anova(const DataMatrix& cat_data
 
 std::map<std::string, DataMatrix> statistics::anova_with_nans(const DataMatrix& cat_data,
     const DataMatrix& cont_data, const std::vector<int>& category_groups,
-    double na_value, const std::set<std::string>& return_types)
+    double na_value, const std::set<std::string>& return_types,
+    bool ignore_empty_groups
+)
 {
     const int num_cat_variables = cat_data.rows();
     const int num_cont_variables = cont_data.rows();
@@ -140,7 +158,7 @@ std::map<std::string, DataMatrix> statistics::anova_with_nans(const DataMatrix& 
         for (int iCont = 0; iCont < num_cont_variables; ++iCont)
         {
             std::tuple<double, double, double> results = pairwise_nan_anova(cat_data, cont_data, 
-                iCat, iCont, category_groups[iCat], na_value);
+                iCat, iCont, category_groups[iCat], na_value, ignore_empty_groups);
             if (compute_pval)
                 pvalues(iCat, iCont) = std::get<0>(results);
             if (compute_f)

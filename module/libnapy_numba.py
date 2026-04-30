@@ -473,6 +473,7 @@ def kruskal_wallis_numba(cat_data : np.ndarray, cont_data : np.ndarray, nan_valu
                 elif group_sizes[iC] == 0 and ignore_empty_groups == True:
                     # Skip empty category and do not include it in H statistic computation.
                     empty_group_counter = empty_group_counter + 1
+                    is_empty_category = True
                     continue
                 else:
                     h_statistic = h_statistic + group_rank_sums[iC]*group_rank_sums[iC]/group_sizes[iC]
@@ -868,18 +869,20 @@ def mann_whitney_numba(bin_data : np.ndarray, cont_data : np.ndarray,  nan_value
 @njit(parallel=True, fastmath=False, nogil=True)
 def anova_numba(cat_data : np.ndarray, cont_data : np.ndarray, category_groups : np.ndarray,
                 nan_value : float, compute_pvalue : bool, compute_f : bool,
-                compute_np2 : bool, num_threads : int):
+                compute_np2 : bool, num_threads : int, ignore_empty_groups : bool):
     """
     Compute pairwise one-way-ANOVA test for all combinations of categorical and continuous variables.
     Args:
         cat_data: Data matrix with rows representing variables and columns indicating category membership.
         cont_data: Data matrix with rows representing continuous variables.
-        category_groups: Array storing number of categories per cotegorical variable (i.e. row).
+        category_groups: Array storing number of categories per categorical variable (i.e. row).
         nan_value: Value representing missing data.
         num_threads : Number of threads to use in parallel computation.
         compute_pvalue: Whether or not to return Pvalue matrix.
         compute_f : Whether or not to return F statistic value.
         compute_np2: Whether or not to return np2 effect size matrix.
+        ignore_empty_groups: Whether or not to exclude empty groups from ANOVA computations due to 
+            pairwise missing value removal.
 
     Returns:
         Pairwise return type matrix and P-values matrix.
@@ -935,14 +938,20 @@ def anova_numba(cat_data : np.ndarray, cont_data : np.ndarray, category_groups :
             ss_total = total_sum_squared - (total_sum * total_sum) / total_count
             ss_bg = 0.0
             is_empty_category = False
+            empty_group_counter = 0
             for iC in range(num_categories):
                 # If empty category is present after NA removal, test results are undefined.
-                if group_counts[iC] == 0:
+                if group_counts[iC] == 0 and ignore_empty_groups == False:
                     is_empty_category = True
+                elif group_counts[iC] == 0 and ignore_empty_groups == True:
+                    # Skip empty category and do not include it in between-group variance computation.
+                    is_empty_category = True
+                    empty_group_counter = empty_group_counter + 1
+                    continue
                 else:
                     ss_bg = ss_bg + group_sums[iC]*group_sums[iC] / group_counts[iC]
 
-            if is_empty_category:
+            if is_empty_category and ignore_empty_groups == False:
                 if compute_pvalue:
                     pvalue_matrix[cat_row, cont_row] = np.nan
                 if compute_f:
@@ -951,6 +960,9 @@ def anova_numba(cat_data : np.ndarray, cont_data : np.ndarray, category_groups :
                     np2_matrix[cat_row, cont_row] = np.nan
                 continue
 
+            if is_empty_category and ignore_empty_groups == True:
+                num_categories = num_categories - empty_group_counter
+            
             ss_bg = ss_bg - total_sum*total_sum / total_count
             # Compute within-group variances as difference of totals and between groups.
             ss_wg = ss_total - ss_bg

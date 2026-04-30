@@ -509,7 +509,7 @@ def chi_squared(data : np.array, nan_value : float = -999, axis : int = 0, threa
 
 def anova(cat_data : np.array, cont_data : np.array, nan_value : float = -999, axis : int = 0,
           threads : int = 1, check_data : bool = False, return_types : list[str] = [],
-          use_numba : bool = True):
+          use_numba : bool = True, ignore_empty_groups : bool = True):
     """Runs ANOVA between all pairwise combinations of categorical and continuous input data variables
     and returns paiwise statistic values as well as pairwise P-values.
 
@@ -524,6 +524,10 @@ def anova(cat_data : np.array, cont_data : np.array, nan_value : float = -999, a
         'p_unadjusted', 'p_bonferroni', 'p_benjamini_hb', 'p_benjamini_yek', 'F', 'np2'.
         If an empty list is passed, every possible data matrix is returned.
         use_numba (bool, optional): Whether or not to use numba-based python implementation.
+        ignore_empty_groups (bool, optional): Whether to simply exclude groups that become empty due
+            to pairwise removal. If set to False, returns np.nan for both effect size and P-value for this
+            specific pair of variables. Otherwise, NApy still tries to compute H statistic by simply
+            ignoring empty groups. Defaults to True.
     """
     input_cat = cat_data
     input_cont = cont_data
@@ -570,18 +574,19 @@ def anova(cat_data : np.array, cont_data : np.array, nan_value : float = -999, a
 
     if not use_numba:
         # Set number of desired threads for computation.
-        libnapy.set_num_threads(threads)
+        set_num_threads(threads)
         # Convert into wrapper object.
-        cat_data_mat = libnapy.DataMatrix(cat_data)
-        cont_data_mat = libnapy.DataMatrix(cont_data)
-        result_dict = libnapy.anova_with_nans(cat_data_mat, cont_data_mat, categories_per_var, nan_value, return_types_mod)
+        cat_data_mat = DataMatrix(cat_data)
+        cont_data_mat = DataMatrix(cont_data)
+        result_dict = anova_with_nans(cat_data_mat, cont_data_mat, categories_per_var, nan_value, return_types_mod, ignore_empty_groups)
     else:
         nan_value = int(nan_value)
         compute_pvalues = 'p_unadjusted' in return_types_mod
         compute_f = 'F' in return_types_mod
         compute_np2 = 'np2' in return_types_mod
-        pvalue_mat, f_mat, np2_mat = libnapy_numba.anova_numba(cat_data, cont_data, np.array(categories_per_var), nan_value,
-                                                            compute_pvalues, compute_f, compute_np2, threads)
+        pvalue_mat, f_mat, np2_mat = anova_numba(cat_data, cont_data, np.array(categories_per_var), nan_value,
+                                                            compute_pvalues, compute_f, compute_np2, threads,
+                                                            ignore_empty_groups)
         result_dict = dict()
         result_dict["p_unadjusted"] = pvalue_mat
         result_dict["F"] = f_mat
