@@ -6,7 +6,7 @@ A fast python tool providing statistical tests and effect sizes for a more compr
 
 # Installation
 
-NApy is available as a [Python package](https://pypi.org/project/napypi/) for most Windows, Linux, and macOS architectures (64-bit systems only). You can install via
+NApy is available as a [Python package](https://pypi.org/project/napypi/) for most Windows, Linux, and macOS architectures (64-bit systems only). We highly recommend installation via
 
 ```bash
 pip install napypi
@@ -121,13 +121,13 @@ We here provide an overview of the usability of the implemented tests and their 
 
 ## Quantitative vs. quantitative data
 
-- **Pearson Correlation:** The function `napy.pearsonr(data, nan_value=-999.0, axis=0, threads=1, return_types=[], use_numba=True)` computes Pearson's r-squared value on all pairs of given variables, in combination with associated two-sided P-values. The P-values roughly indicate the probability of an uncorrelated system producing datasets that have a Pearson correlation at least as extreme as the one computed from the given pairwise data. Missing values are pairwisely ignored. In case two given input variables have length less than three (which can also happen after removal of NAs), P-values are not well-defined and `np.nan` is returned instead. The function takes the following arguments:
+- **Pearson Correlation:** The function `napy.pearsonr(data, nan_value=-999.0, axis=0, threads=1, return_types=[], use_numba=True)` computes Pearson's r values on all pairs of given variables, in combination with associated two-sided P-values. The P-values roughly indicate the probability of an uncorrelated system producing datasets that have a Pearson correlation at least as extreme as the one computed from the given pairwise data. Missing values are pairwisely ignored. In case two given input variables have length less than three (which can also happen after removal of NAs), P-values are not well-defined and `np.nan` is returned instead. The function takes the following arguments:
 
   - data [np.ndarray, torch.Tensor, pd.DataFrame]: 2D table storing continuous data values.
   - nan_value [float, default=-999.0]: Float value representing missing values in the given input data.
   - axis [int, default=0]: Whether to consider rows as variables (axis=0) or columns (axis=1).
   - threads [int, default=1]: How many threads to use in parallel computation.
-  - return_types [list[str], default=[]]: Which calculation results (correlation value, P-values) to return. Can be a list containing any of the following entries: `'r2'` for Pearson's r-squared correlation values, `'p_unadjusted'` for uncorrected two-sided P-values, `'p_bonferroni'` for Bonferroni-corrected P-values,  `'p_benjamini_hb'` for Benjamini-Hochberg correction, and `p_benjamini_yek'` for Bejamini-Yekutieli correction. If the list is emtpy, all available results will be returned. In the P-value correction procedure we ignore "self-tests" on the diagonal of the P-value matrix and therefore set the P-values after applying the desired multiple testing correction method to `numpy.nan`. In this case, since the resulting P-value matrix is symmetric, the number of actually performed tests corresponds to half the size of the P-value matrix minus the diagonal. With any applied multiple testing correction case, `numpy.nan` values based on the unadjusted P-value matrix are ignored and not counted as performed tests.
+  - return_types [list[str], default=[]]: Which calculation results (correlation value, P-values) to return. Can be a list containing any of the following entries: `'r'` for Pearson's r-squared correlation values, `'p_unadjusted'` for uncorrected two-sided P-values, `'p_bonferroni'` for Bonferroni-corrected P-values,  `'p_benjamini_hb'` for Benjamini-Hochberg correction, and `p_benjamini_yek'` for Bejamini-Yekutieli correction. If the list is emtpy, all available results will be returned. In the P-value correction procedure we ignore "self-tests" on the diagonal of the P-value matrix and therefore set the P-values after applying the desired multiple testing correction method to `numpy.nan`. In this case, since the resulting P-value matrix is symmetric, the number of actually performed tests corresponds to half the size of the P-value matrix minus the diagonal. With any applied multiple testing correction case, `numpy.nan` values based on the unadjusted P-value matrix are ignored and not counted as performed tests.
   - use_numba [bool, default=True]: Whether to use the numba-based or C++ implementation of the test.
 
   Based on the values specified in the return_types list, a dictionary storing the specified data matrices will be returned.
@@ -139,7 +139,7 @@ We here provide an overview of the usability of the implemented tests and their 
   import numpy as np
   data = np.array([[1,2,3,4,5], [2,3,4,5,-99]])
   NAN_VALUE = -99.0
-  result_dict = napy.pearsonr(data, nan_value=NAN_VALUE, axis=0, threads=1, return_types=['r2', 'p_benjamini_hb'])
+  result_dict = napy.pearsonr(data, nan_value=NAN_VALUE, axis=0, threads=1, return_types=['r', 'p_benjamini_hb'])
   # result_dict['r2'] stores Pearson correlation values, and result_dict['p_benjamini_hb'] stores corrected P-values
   ```
 
@@ -279,7 +279,7 @@ result_dict = napy.kruskal_wallis(cat_data, cont_data, nan_value=NAN_VALUE, axis
 
 
 
-- **Mann-Whitney-U test:** The function `napy.mwu(bin_data, cont_data, nan_value = -999.0, axis=0, threads=1, check_data=False, return_types=[], mode='auto')` runs Mann-Whitney-U tests between all pairwise combinations of variables from `bin_data` and `cont_data`. Depending on the chosen `mode` and the input data, either the exact P-value calculation or the much faster asymptotic approximation based on the z-value is used. The function computes the effect size / statistic value declared in parameter `return_types` and two-sided P-values either from the exact calculation of the U-distribution or the survival function of the standard normal distribution, depending on `mode`. Missing values are pairwisely ignored, i.e. if a missing value occurs in the binary variable, the matching position in the continuous data is also ignored. Binary categories need to be integer-encoded (`0,1`). In case one category should no longer be present due to removal of missing values, this will lead to the U-statistic being undefined and will hence return `numpy.nan` for the respective pair of variables. The same happens in case a variable should only consist of one category. The function takes the following arguments:
+- **Mann-Whitney-U test:** The function `napy.mwu(bin_data, cont_data, nan_value = -999.0, axis=0, threads=1, check_data=False, return_types=[], mode='auto')` runs Mann-Whitney-U tests between all pairwise combinations of variables from `bin_data` and `cont_data`. Depending on the chosen `mode` and the input data, either the exact P-value calculation or the much faster asymptotic approximation based on the z-value is used. The function computes the effect size / statistic value declared in parameter `return_types` and two-sided P-values either from the exact calculation of the U-distribution or the survival function of the standard normal distribution, depending on `mode`. Missing values are pairwisely ignored, i.e. if a missing value occurs in the binary variable, the matching position in the continuous data is also ignored. Binary categories need to be integer-encoded (`0,1`). As default, this function returns the U statistic value for group with label ID 0, which is sufficient to also compute U statistic of the second group. In case one category should no longer be present due to removal of missing values, this will lead to the U-statistic being undefined and will hence return `numpy.nan` for the respective pair of variables. The same happens in case a variable should only consist of one category. The function takes the following arguments:
 
   - bin_data [np.ndarray, torch.Tensor, pd.DataFrame] : 2D table storing binary variables data.
 
@@ -291,7 +291,7 @@ result_dict = napy.kruskal_wallis(cat_data, cont_data, nan_value=NAN_VALUE, axis
 
   - check_data [bool, default=False]: Whether or not to perform additional checks on the format of categorical input data. It introduces a slight overhead in runtime.
 
-  - return_types [list[str], default=[]]: Which statistic results to return. Can be a list containing any of the following entries: `'U'` for the corresponding value of the U statistic,  and `'r'` for the absolute value of the Pearson r effect size, `'p_unadjusted'` for unadjusted two-sided P-values, `'p_bonferroni'` for Bonferroni-corrected P-values,  `'p_benjamini_hb'` for Benjamini-Hochberg correction, and `p_benjamini_yek'` for Bejamini-Yekutieli correction. If the list is emtpy, all available results will be returned.
+  - return_types [list[str], default=[]]: Which statistic results to return. Can be a list containing any of the following entries: `'U'` for the corresponding value of the U statistic of the group with ID 0, and `'r'` for the signed value of the Pearson r effect size (positive values indicate a higher median in group 1, negative values a higher median in group 0), `'p_unadjusted'` for unadjusted two-sided P-values, `'p_bonferroni'` for Bonferroni-corrected P-values,  `'p_benjamini_hb'` for Benjamini-Hochberg correction, and `p_benjamini_yek'` for Bejamini-Yekutieli correction. If the list is emtpy, all available results will be returned.
 
   - use_numba [bool, default=False]: Whether to use the numba-based or C++ implementation of the test.
 
