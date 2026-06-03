@@ -1,8 +1,10 @@
-import libnapy
-import libnapy_numba
+from ._core import set_num_threads, pearson_with_nans, spearman_with_nans, chi_squared_with_nans, partial_correlation_with_nans
+from ._core import anova_with_nans, kruskal_wallis_with_nans, t_test_with_nans, mwu_with_nans, DataMatrix
+from .numba_core import pearson_numba, spearman_numba, chi2_numba, kruskal_wallis_numba
+from .numba_core import ttest_numba, mann_whitney_numba, anova_numba
 import numpy as np
-import scipy as sc
 import torch
+import scipy as sc
 import pandas as pd
 
 def _adjust_pvalues_bonferroni(pval_matrix : np.array, ignore_diag : bool) -> np.array:
@@ -143,7 +145,7 @@ def parse_input_single_matrix(cont_data):
     elif isinstance(cont_data, np.ndarray):
         return cont_data.copy().astype(np.float64)
     else:
-        return raiseValueError("Input error: data has invalid datatype, needs to be either torch.Tensor, pd.DataFrame, or np.ndarray!")
+        raise ValueError("Input error: data has invalid datatype, needs to be either torch.Tensor, pd.DataFrame, or np.ndarray!")
 
 def transform_output(output_dic, axis, data_one, data_two=None):
     if isinstance(data_one, torch.Tensor):
@@ -167,84 +169,9 @@ def transform_output(output_dic, axis, data_one, data_two=None):
         return output_dic
     else:
         return output_dic
-
-def joint_multiple_testing_correction(cont_matrix: np.ndarray, cat_matrix : np.ndarray, mixed_matrix : np.ndarray,
-                                      method : str = ['bonferroni', 'benjamini-hb', 'benjamini-yek']):
-    # For Bonferroni correction, simply count number of performed tests.
-    if method == 'bonferroni':
-        number_of_tests = 0
-        # Counter number of performed tests for cont matrix.
-        diag_mask = np.eye(cont_matrix.shape[0], dtype=bool)
-        cont_matrix[diag_mask] = np.nan
-        na_mask = ~np.isnan(cont_matrix)
-        cont_mask = ~diag_mask & na_mask
-        cont_submatrix = cont_matrix[cont_mask]
-        number_of_tests = len(cont_submatrix) / 2
-        # Count number of performed tests for cat matrix.
-        diag_mask = np.eye(cat_matrix.shape[0], dtype=bool)
-        cat_matrix[diag_mask] = np.nan
-        na_mask = ~np.isnan(cat_matrix)
-        cat_mask = ~diag_mask & na_mask
-        cat_submatrix = cat_matrix[cat_mask]
-        number_of_tests = number_of_tests + len(cat_submatrix) / 2
-        # Count number of performed tests for mixed matrix.
-        mixed_mask = ~np.isnan(mixed_matrix)
-        mixed_submatrix = mixed_matrix[mixed_mask]
-        number_of_tests = number_of_tests + len(mixed_submatrix)
-        ## Multiply each matrixs' pvalues by total number of performed tests.
-        cont_submatrix = cont_submatrix * number_of_tests
-        corrected_cont = np.clip(cont_submatrix, a_min=0.0, a_max=1.0)
-        cont_matrix[cont_mask] = corrected_cont
-        cat_submatrix = cat_submatrix * number_of_tests
-        corrected_cat = np.clip(cat_submatrix, a_min=0.0, a_max=1.0)
-        cat_matrix[cat_mask] = corrected_cat
-        mixed_submatrix = mixed_submatrix * number_of_tests
-        corrected_mixed = np.clip(mixed_submatrix, a_min=0.0, a_max=1.0)
-        mixed_matrix[mixed_mask] = corrected_mixed
-        return cont_matrix, cat_matrix, mixed_matrix
-    else:
-        # Extract relevant Pvalues from cont matrix.
-        diagonal_mask = np.eye(cont_matrix.shape[0], dtype=bool)
-        cont_matrix[diagonal_mask] = np.nan
-        # Subset non-NA values of upper triangular pvalue matrix into flattened 1D array.
-        cont_upper_tri_mask = np.triu(np.ones(cont_matrix.shape, dtype=bool), k=1)
-        cont_non_na_mask = ~np.isnan(cont_matrix)
-        cont_mask = cont_upper_tri_mask & cont_non_na_mask
-        cont_array = cont_matrix[cont_mask]
-        # Extract relevant Pvalues from cat matrix.
-        diagonal_mask = np.eye(cat_matrix.shape[0], dtype=bool)
-        cat_matrix[diagonal_mask] = np.nan
-        # Subset non-NA values of upper triangular pvalue matrix into flattened 1D array.
-        cat_upper_tri_mask = np.triu(np.ones(cat_matrix.shape, dtype=bool), k=1)
-        cat_non_na_mask = ~np.isnan(cat_matrix)
-        cat_mask = cat_upper_tri_mask & cat_non_na_mask
-        cat_array = cat_matrix[cat_mask]
-        # Extract relevant Pvalues from mixed matrix.
-        mixed_mask = ~np.isnan(mixed_matrix)
-        mixed_array = mixed_matrix[mixed_mask]
-        # Concatenate three Pvalues arrays.
-        joint_pvalues = np.concatenate([cont_array, cat_array, mixed_array])
-        # Apply scipy's false discovery rate control on flattened matrix.
-        joint_adjusted = sc.stats.false_discovery_control(joint_pvalues, axis=0, method=method)
-        joint_adjusted = np.clip(joint_adjusted, a_min=0.0, a_max=1.0)
-        # Put adjusted Pvalues back into cont matrix.
-        cont_length = len(cont_array)
-        cont_matrix[cont_mask] = joint_adjusted[:cont_length]
-        lower_indices = np.tril_indices(cont_matrix.shape[0], -1)
-        cont_matrix[lower_indices] = cont_matrix.T[lower_indices]
-        # Put adjusted Pvalues back into cat matrix.
-        cat_length = len(cat_array)
-        cat_matrix[cat_mask] = joint_adjusted[cont_length:(cont_length+cat_length)]
-        lower_indices = np.tril_indices(cat_matrix.shape[0], -1)
-        cat_matrix[lower_indices] = cat_matrix.T[lower_indices]
-        # Put adjusted Pvalues back into mixed matrix.
-        mixed_length = len(mixed_array)
-        mixed_matrix[mixed_mask] = joint_adjusted[(cont_length+cat_length):(cont_length+cat_length+mixed_length)]
-        return cont_matrix, cat_matrix, mixed_matrix
-
-
+    
 def pearsonr(data : np.array, nan_value : float = -999, axis : int = 0, threads : int = 1,
-             use_numba : bool = True, return_types : list[str] = []):
+             return_types : list[str] = [], use_numba : bool = True):
     """Computes NA-aware Pearson correlation on given data matrix between all
     combinations of variables and returns r-squared values as well as pvalues.
 
@@ -256,7 +183,7 @@ def pearsonr(data : np.array, nan_value : float = -999, axis : int = 0, threads 
         threads (int, optional): Number of threads to be used in parallel computation. Defaults to 1.
         use_numba (bool, optional): If set to True, use numba based python implementation instead of CPP version.
         return_types (list[str], optional): List of data matrices to return. Can be any subset of
-        'p_unadjusted', 'p_bonferroni', 'p_benjamini_hb', 'p_benjamini_yek', and 'r2'. If an empty list is
+        'p_unadjusted', 'p_bonferroni', 'p_benjamini_hb', 'p_benjamini_yek', and 'r'. If an empty list is
         passed, every possible data matrix is returned.
     """
     input_data = data
@@ -266,11 +193,11 @@ def pearsonr(data : np.array, nan_value : float = -999, axis : int = 0, threads 
     _check_input_data_single_matrix(data, threads, axis)
 
     # Check input of Pvalue adjustment method.
-    if not set(return_types).issubset({'r2', 'p_unadjusted', 'p_bonferroni', 'p_benjamini_hb', 'p_benjamini_yek'}):
+    if not set(return_types).issubset({'r', 'p_unadjusted', 'p_bonferroni', 'p_benjamini_hb', 'p_benjamini_yek'}):
         raise ValueError(f"Unknown return type in input list: {return_types}.")
 
     if len(return_types) == 0:
-        return_types = ['r2', 'p_unadjusted', 'p_bonferroni', 'p_benjamini_hb', 'p_benjamini_yek']
+        return_types = ['r', 'p_unadjusted', 'p_bonferroni', 'p_benjamini_hb', 'p_benjamini_yek']
 
     # Transpose data if necessary.
     if axis==1:
@@ -283,22 +210,22 @@ def pearsonr(data : np.array, nan_value : float = -999, axis : int = 0, threads 
     # Use CPP-based correlation computation with OpenMP.
     if not use_numba:
         # Set number of desired threads for computation.
-        libnapy.set_num_threads(threads)
-        data_mat = libnapy.DataMatrix(data)
-        corr_mat, pvalue_mat = libnapy.pearson_with_nans(data_mat, nan_value)
+        set_num_threads(threads)
+        data_mat = DataMatrix(data)
+        corr_mat, pvalue_mat = pearson_with_nans(data_mat, nan_value)
         corr_mat = np.array(corr_mat, copy=False)
         pvalue_mat = np.array(pvalue_mat, copy=False)
 
     else: # Use numba-based python implementation.
-        corr_mat, pvalue_mat = libnapy_numba.pearson_numba(data, nan_value, threads)
+        corr_mat, pvalue_mat = pearson_numba(data, nan_value, threads)
     
     # Clip values to range 0 and 1 (rounding errors)
     pvalue_mat = np.clip(pvalue_mat, a_min=0.0, a_max=1.0)
 
     output_dic = dict()
     # Check which effect sizes and Pvalues to return.
-    if 'r2' in return_types:
-        output_dic["r2"] = corr_mat
+    if 'r' in return_types:
+        output_dic["r"] = corr_mat
 
     if 'p_bonferroni' in return_types:
         pvalue_mat_bonf = _adjust_pvalues_bonferroni(pvalue_mat.copy(), ignore_diag=True)
@@ -318,7 +245,6 @@ def pearsonr(data : np.array, nan_value : float = -999, axis : int = 0, threads 
     output_dic = transform_output(output_dic, axis, input_data)
 
     return output_dic
-
 
 def spearmanr(data : np.array, nan_value : float = -999, axis : int = 0, threads : int = 1,
               use_numba : bool = False, return_types : list[str] = []):
@@ -357,14 +283,14 @@ def spearmanr(data : np.array, nan_value : float = -999, axis : int = 0, threads
 
     if not use_numba:
         # Set number of desired threads for computation.
-        libnapy.set_num_threads(threads)
+        set_num_threads(threads)
         # Convert into wrapper object.
-        data_mat = libnapy.DataMatrix(data)
-        corr_mat, pvalue_mat = libnapy.spearman_with_nans(data_mat, nan_value)
+        data_mat = DataMatrix(data)
+        corr_mat, pvalue_mat = spearman_with_nans(data_mat, nan_value)
         corr_mat = np.array(corr_mat, copy=False)
         pvalue_mat = np.array(pvalue_mat, copy=False)
     else:
-        corr_mat, pvalue_mat = libnapy_numba.spearman_numba(data, nan_value, threads)
+        corr_mat, pvalue_mat = spearman_numba(data, nan_value, threads)
         
     # Clip values to range 0 and 1 (rounding errors)
     pvalue_mat = np.clip(pvalue_mat, a_min=0.0, a_max=1.0)
@@ -450,17 +376,17 @@ def chi_squared(data : np.array, nan_value : float = -999, axis : int = 0, threa
 
     if not use_numba:
         # Set number of desired threads for computation.
-        libnapy.set_num_threads(threads)
+        set_num_threads(threads)
         # Convert into wrapper object.
-        data_mat = libnapy.DataMatrix(data)
-        result_dict = libnapy.chi_squared_with_nans(data_mat, categories_per_var, nan_value, return_types_mod)
+        data_mat = DataMatrix(data)
+        result_dict = chi_squared_with_nans(data_mat, categories_per_var, nan_value, return_types_mod)
     else:
         nan_value = int(nan_value)
         compute_pvalues = 'p_unadjusted' in return_types_mod
         compute_chi2 = 'chi2' in return_types_mod
         compute_phi = 'phi' in return_types_mod
         compute_cramers = 'cramers_v' in return_types_mod
-        pvalue_mat, chi2_mat, phi_mat, cramers_mat = libnapy_numba.chi2_numba(data, np.array(categories_per_var), nan_value,
+        pvalue_mat, chi2_mat, phi_mat, cramers_mat = chi2_numba(data, np.array(categories_per_var), nan_value,
                                                             compute_pvalues, compute_chi2, compute_phi,
                                                             compute_cramers, threads)
         result_dict = dict()
@@ -816,18 +742,18 @@ def ttest(bin_data : np.array, cont_data : np.array, nan_value : float = -999, a
 
     if not use_numba:
         # Set number of desired threads for computation.
-        libnapy.set_num_threads(threads)
+        set_num_threads(threads)
         # Convert into wrapper object.
-        bin_data_mat = libnapy.DataMatrix(bin_data)
-        cont_data_mat = libnapy.DataMatrix(cont_data)
+        bin_data_mat = DataMatrix(bin_data)
+        cont_data_mat = DataMatrix(cont_data)
         # Run t-test.
-        result_dict = libnapy.t_test_with_nans(bin_data_mat, cont_data_mat, nan_value, return_types_mod, use_welch)
+        result_dict = t_test_with_nans(bin_data_mat, cont_data_mat, nan_value, return_types_mod, use_welch)
     else:
         nan_value = int(nan_value)
         compute_pvalues = 'p_unadjusted' in return_types_mod
         compute_t = 't' in return_types_mod
         compute_cohens = 'cohens_d' in return_types_mod
-        pvalue_mat, t_mat, cohens_mat = libnapy_numba.ttest_numba(bin_data, cont_data, nan_value, compute_pvalues,
+        pvalue_mat, t_mat, cohens_mat = ttest_numba(bin_data, cont_data, nan_value, compute_pvalues,
                                                                 compute_t, compute_cohens, use_welch, threads)
         result_dict = dict()
         result_dict["p_unadjusted"] = pvalue_mat
@@ -943,10 +869,10 @@ def mwu(bin_data: np.array, cont_data: np.array, nan_value: float = -999, axis: 
     # Set number of desired threads for computation.
     if not use_numba:
         # Convert into wrapper object.
-        bin_data_mat = libnapy.DataMatrix(bin_data)
-        cont_data_mat = libnapy.DataMatrix(cont_data)
-        libnapy.set_num_threads(threads)
-        result_dict = libnapy.mwu_with_nans(bin_data_mat, cont_data_mat, nan_value, return_types_mod, mode)
+        bin_data_mat = DataMatrix(bin_data)
+        cont_data_mat = DataMatrix(cont_data)
+        set_num_threads(threads)
+        result_dict = mwu_with_nans(bin_data_mat, cont_data_mat, nan_value, return_types_mod, mode)
     else:
         if mode == "auto":
             mode_int = 0
@@ -957,7 +883,7 @@ def mwu(bin_data: np.array, cont_data: np.array, nan_value: float = -999, axis: 
         compute_pvalues = 'p_unadjusted' in return_types_mod
         compute_u = 'U' in return_types_mod
         compute_r = 'r' in return_types_mod
-        pvalue_mat, u_mat, r_mat = libnapy_numba.mann_whitney_numba(bin_data, cont_data, nan_value, compute_pvalues,
+        pvalue_mat, u_mat, r_mat = mann_whitney_numba(bin_data, cont_data, nan_value, compute_pvalues,
                                                                      compute_u, compute_r, threads, mode_int)
         result_dict = dict()
         result_dict["p_unadjusted"] = pvalue_mat
@@ -998,15 +924,93 @@ def mwu(bin_data: np.array, cont_data: np.array, nan_value: float = -999, axis: 
 
     return output_dic
 
-if __name__ == "__main__":
-    cont_unadjusted = np.array([[0.        , 0.21975876, 0.74907518, 0.49731136],
-       [0.21975876, 0.        , 0.34668469, 0.54832602],
-       [0.74907518, 0.34668469, 0.        , 0.94735348],
-       [0.49731136, 0.54832602, 0.94735348, 0.        ]])
-    cat_unadjusted = np.array([[0.01735127, 0.13533528, 0.13533528],
-       [0.13533528, 0.01430588, 0.01430588],
-       [0.13533528, 0.01430588, 0.01430588]])
-    mixed_unadjusted = np.array([[0.56471812, 0.65143906, 0.8668779 , 0.18009231],
-       [0.27523352, 0.51269076, 0.51269076, 0.82725935],
-       [0.27523352, 0.51269076, 0.51269076, 0.82725935]])
-    out = joint_multiple_testing_correction(cont_unadjusted, cat_unadjusted, mixed_unadjusted, method='bh')
+def partial_correlation(data : np.array, covar_indices: list[int] = [], nan_value : float = -999, axis : int = 0,
+                        use_numba : bool = False, threads : int = 1, return_types : list[str] = [], method="pearson"):
+    """Runs partial correlation tests on all pairwise combinations of variables in the input data matrix,
+    controlling for the variables in covar.
+    Returns pairwise correlation coefficients and P-values.
+
+    Args:
+        data (np.array): Data matrix storing variables.
+        covar (list[int], optional): List of variable indices to be used as covariates in the partial correlation.
+            If empty, no variables in the data matrix are used as covariates. Defaults to [].
+        nan_value (float, optional): Value indicating missing value. Defaults to -999.
+        axis (int, optional): Whether to consider rows as variables (axis=0) or columns (axis=1). Defaults to 0.
+        threads (int, optional): Number of threads to be used in parallel computation. Defaults to 1.
+        use_numba (bool, optional): Whether or not to use numba-based python implementation. Defaults to False.
+        return_types (list[str], optional): List of result data matrices to return. Can be any subset of
+            'p_unadjusted', 'p_bonferroni', 'p_benjamini_hb', 'p_benjamini_yek', 'correlation'.
+            If an empty list is passed, every possible data matrix is returned.
+        method (str, optional): Which correlation method to use. Can be chosen from "pearson" and "spearman". 
+            Defaults to "pearson".
+    """
+    # Check validity of input data.
+    _check_input_data_single_matrix(data, threads, axis)
+    # Check input of return types list.
+    if not set(return_types).issubset({'correlation', 'p_unadjusted', 'p_bonferroni', 'p_benjamini_hb', 'p_benjamini_yek'}):
+        raise ValueError(f"Unknown return type in input list: {return_types}.")
+
+    if len(return_types) == 0:
+        return_types = ['correlation', 'p_unadjusted', 'p_bonferroni', 'p_benjamini_hb', 'p_benjamini_yek']
+        
+    if method not in ['pearson', 'spearman']:
+        raise ValueError(f"Unknown correlation method: {method}. Supported methods are 'pearson' and 'spearman'.")
+    
+     # Transpose data if necessary.
+    if axis==1:
+        data = data.T.copy()
+        
+    # Ensure float datatype on matrix.
+    data = np.array(data, copy=False, dtype=np.float64)
+    nan_value = float(nan_value)
+    
+    # Validate covar_indices
+    if covar_indices:  # Only check if not empty
+        max_index = data.shape[0] - 1
+        invalid_indices = [idx for idx in covar_indices if idx < 0 or idx > max_index]
+        if invalid_indices:
+            raise ValueError(f"Invalid covariate indices {invalid_indices}. "
+                            f"Valid range is 0 to {max_index} for data with {data.shape[0]} rows.")
+        
+        # Check for duplicates
+        if len(set(covar_indices)) != len(covar_indices):
+            raise ValueError(f"Duplicate indices found in covar_indices: {covar_indices}")
+
+        
+    # Use CPP-based correlation computation with OpenMP.
+    if not use_numba:
+        # Set number of desired threads for computation.
+        set_num_threads(threads)
+        data_mat = DataMatrix(data)
+        corr_mat, pvalue_mat = partial_correlation_with_nans(data_mat, covar_indices, nan_value, method)
+        corr_mat = np.array(corr_mat, copy=False)
+        pvalue_mat = np.array(pvalue_mat, copy=False)
+    
+    else: # Use numba-based python implementation.
+        pass
+        # TODO: Implement partial correlation in numba.
+    
+    # Clip values to range 0 and 1 (rounding errors)
+    pvalue_mat = np.clip(pvalue_mat, a_min=0.0, a_max=1.0)
+    
+    output_dic = dict()
+    # Check which effect sizes and Pvalues to return.
+    if 'correlation' in return_types:
+        output_dic["correlation"] = corr_mat
+    
+    if 'p_bonferroni' in return_types:
+        pvalue_mat_bonf = _adjust_pvalues_bonferroni(pvalue_mat.copy(), ignore_diag=True)
+        output_dic["p_bonferroni"] = pvalue_mat_bonf
+
+    if 'p_benjamini_hb' in return_types:
+        pvalue_mat_benj_hb = _adjust_pvalues_fdr_control(pvalue_mat.copy(), 'bh', ignore_diag=True)
+        output_dic['p_benjamini_hb'] = pvalue_mat_benj_hb
+
+    if 'p_benjamini_yek' in return_types:
+        pvalue_mat_benj_yek = _adjust_pvalues_fdr_control(pvalue_mat.copy(), 'by', ignore_diag=True)
+        output_dic['p_benjamini_yek'] = pvalue_mat_benj_yek
+
+    if 'p_unadjusted' in return_types:
+        output_dic["p_unadjusted"] = pvalue_mat
+
+    return output_dic

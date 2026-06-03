@@ -125,11 +125,12 @@ std::tuple<double, double, double> pairwise_nan_mwu(const DataMatrix& bin_data, 
     }
 
     // Compute U-statistic value.
-    int larger_index = (groupRankSums[0]>=groupRankSums[1]) ? 0 : 1 ;
-    const int n1 = groupSizes[larger_index];
-    const int n2 = groupSizes[1-larger_index];
-    const double R1 = groupRankSums[larger_index];
-    const double U = n1*n2 + 0.5*n1*(n1+1) - R1;
+    const int n1 = groupSizes[0];
+    const int n2 = groupSizes[1];
+    const double R1 = groupRankSums[0];
+    const double U1 = n1*n2 + 0.5*n1*(n1+1) - R1;
+    const double U2 = n1*n2 - U1;
+    const double U = std::min(U1, U2);
 
     // Edge case checks.
     if (n1 == 0 || n2 == 0)
@@ -144,13 +145,13 @@ std::tuple<double, double, double> pairwise_nan_mwu(const DataMatrix& bin_data, 
     const double mu = 0.5*n1*n2;
     const double n = n1 + n2;
     const double sigma = std::sqrt((1.0/12.0)*n1*n2*((n+1) - tie_correction/(n*(n-1))));
-    const double z_value = (U - mu) / sigma;
+    const double z_value = (U1 - mu) / sigma;
 
     double r_effect;
     if (sigma == 0.0)
         r_effect = std::numeric_limits<double>::quiet_NaN();
     else
-        r_effect = std::abs(z_value) / std::sqrt(n);
+        r_effect = z_value / std::sqrt(n);
 
     if (mode == "asymptotic" || (mode == "auto" && !is_exact_possible))
     {
@@ -159,7 +160,7 @@ std::tuple<double, double, double> pairwise_nan_mwu(const DataMatrix& bin_data, 
         if (std::isnan(abs(z_value)))
             return get_nans_mwu();
         const double pvalue = 2.0 * (1-cdf(dist, abs(z_value)));
-        return std::make_tuple(pvalue, U, r_effect);
+        return std::make_tuple(pvalue, U1, r_effect);
         
     }
     else if (mode == "exact" || (mode == "auto" && is_exact_possible))
@@ -167,7 +168,7 @@ std::tuple<double, double, double> pairwise_nan_mwu(const DataMatrix& bin_data, 
         // Use efficient dynamic programming approach by Andreas Loeffler to compute exact pvalues.
         const int rounded_u = static_cast<int>(std::round(U));
         const double pvalue = compute_exact_pvalue(n1, n2, rounded_u);
-        return std::make_tuple(pvalue, rounded_u, r_effect);
+        return std::make_tuple(pvalue, U1, r_effect);
     }
     else 
     {
