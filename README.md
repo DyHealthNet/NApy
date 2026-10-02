@@ -13,7 +13,7 @@ pip install napypi
 ```
 
 
-In order to use NApy's functionality as shown in the documentation below, you can then simply import NApy via
+Currently, all confounder-aware tests (partial correlation, linear regression, logistic/multinomial regression) are only available in the PyPI version. In order to use NApy's functionality as shown in the documentation below, you can then simply import NApy via
 ```python
 import napypi as napy
 ```
@@ -164,8 +164,29 @@ We here provide an overview of the usability of the implemented tests and their 
   result_dict = napy.spearmanr(data, nan_value=NAN_VALUE, axis=0, threads=1, return_types=['rho', 'p_unadjusted'])
   # result_dict['rho'] stores Spearman rank correlation values, result_dict['p_unadjusted'] stores unadjusted P-values
   ```
-  
-  
+
+- **Partial correlation:** The function `napy.partial_correlation(data, covar_indices=[], nan_value=-999.0, axis=0, use_numba=False, threads=1, return_types=[], method="pearson")` computes pairwise partial correlations between all variables in a single data matrix while controlling for the variables listed in `covar_indices`. It returns the partial correlation coefficients and two-sided P-values. Missing values are pairwisely ignored. If a tested variable is also listed as a covariate, or if too few observations remain after removing missing values, the corresponding entries are returned as `numpy.nan`. The function takes the following arguments:
+
+  - data [np.ndarray]: Numpy 2D array storing variables to compute partial correlations for.
+  - covar_indices [list[int], default=[]]: Indices of rows that should be used as covariates in the partial correlation.
+  - nan_value [float, default=-999.0]: Float value representing missing values in the given input data.
+  - axis [int, default=0]: Whether to consider rows as variables (axis=0) or columns (axis=1).
+  - use_numba [bool, default=False]: Whether to use the numba-based or C++ implementation of the test.
+  - threads [int, default=1]: How many threads to use in parallel computation.
+  - return_types [list[str], default=[]]: Which calculation results to return. Can be a list containing any of the following entries: `'correlation'` for the partial correlation values, `'n'` for the number of samples remaining for each pair of variables after removal of samples with missing values in either variable or any covariate, `'p_unadjusted'` for the uncorrected two-sided P-values, `'p_bonferroni'` for Bonferroni-corrected P-values, `'p_benjamini_hb'` for Benjamini-Hochberg correction, and `'p_benjamini_yek'` for Benjamini-Yekutieli correction. If the list is empty, all available results will be returned.
+  - method [str, default="pearson"]: Which correlation method to use on the residuals. Can be chosen from `pearson` and `spearman`.
+
+  Based on the values specified in the return_types list, a dictionary storing the specified data matrices will be returned.
+
+  Example call:
+
+  ```python
+  import napy
+  import numpy as np
+  data = np.array([[1, 2, 3, 4, 5], [2, 1, 2, 3, 4], [5, 4, 3, 2, 1]])
+  result_dict = napy.partial_correlation(data, covar_indices=[2], nan_value=-99.0, axis=0, threads=1, return_types=['correlation', 'p_unadjusted'], method='pearson')
+  # result_dict['correlation'] stores partial correlation values, result_dict['p_unadjusted'] stores unadjusted P-values
+  ```
 
 ## Categorical vs. categorical data
 
@@ -310,6 +331,71 @@ result_dict = napy.kruskal_wallis(cat_data, cont_data, nan_value=NAN_VALUE, axis
     statistics, pvalues = napy.mwu(bin_data, cont_data, nan_value=NAN_VALUE, axis=0, threads=1, check_data=False, return_types=['r', 'p_benjamini_hb'], mode='auto')
     # result_dict['p_benjamini_hb'] stores Benjamini-Hochberg corrected P-values, result_dict['r'] stores effect size values
     ```
+
+- **Logistic regression:** The function `napy.logistic_regression(cat_data, cont_data, covars_categorical=[], covars_continuous=[], nan_value=-999.0, axis=0, threads=1, return_types=[], use_numba=False)` runs logistic regression likelihood-ratio tests on all pairwise combinations of binary dependent variables from `cat_data` against categorical and continuous predictor variables from `cat_data` and `cont_data`, adjusted for the given covariates. It is the special case of the multinomial logistic regression below with two classes and returns the likelihood-ratio statistic and P-values as declared in the parameter `return_types`. Missing values are pairwisely ignored, i.e. only samples without missing values in the dependent variable, the predictor and all covariates are used for both the full and the reduced model. Categorical predictors and covariates are dummy-encoded with their lowest category as reference. Categorical variables with more than two categories can be used as predictors and covariates, but their rows in the result matrices are `numpy.nan`, since they are no binary dependent variables. The same holds for pairs involving a covariate and for regressions of a variable on itself. The function takes the same arguments as `napy.multinomial_regression` below and returns data matrices of the same shape.
+
+  Example call:
+
+  ```python
+  import napy
+  import numpy as np
+  cat_data = np.array([[0, 1, 1, 0, 1, 0, 0, 1], [0, 1, 2, 2, 1, 0, 1, 2]])
+  cont_data = np.array([[0.2, 1.3, 2.1, 1.8, 0.7, 0.4, -99, 2.2], [2.4, 1.9, 0.5, 3.1, 2.8, 1.2, 0.8, 1.1]])
+  NAN_VALUE = -99.0
+  result_dict = napy.logistic_regression(cat_data, cont_data, covars_categorical=[1], covars_continuous=[1], nan_value=NAN_VALUE, axis=0, threads=1, return_types=['LR_statistic', 'p_unadjusted'])
+  # result_dict['LR_statistic'][0, cat_data.shape[0] + 0] stores the likelihood-ratio statistic of binary variable 0 against continuous variable 0
+  ```
+
+- **Multinomial logistic regression:** The function `napy.multinomial_regression(cat_data, cont_data, covars_categorical=[], covars_continuous=[], nan_value=-999.0, axis=0, threads=1, return_types=[], use_numba=False)` runs multinomial logistic regression tests on all pairwise combinations of categorical dependent variables from `cat_data` against categorical and continuous predictor variables from `cat_data` and `cont_data`. It returns the likelihood-ratio statistic and P-values as declared in the parameter `return_types`. Missing values are pairwisely ignored. Categories need to be integer-encoded in ascending order starting from zero. In case some category should no longer be present due to missing values, or if a dependent variable has fewer than two classes, the likelihood-ratio statistic is undefined and will hence return `numpy.nan` for the respective pair of variables. The same holds for categorical predictors with only one remaining category, pairs involving a covariate, and regressions of a variable on itself. The function takes the following arguments:
+
+  - cat_data [np.ndarray]: Numpy 2D array storing categorical variables data.
+  - cont_data [np.ndarray]: Numpy 2D array storing continuous variables data.
+  - covars_categorical [list[int], default=[]]: Indices of categorical variables that should be used as covariates in the regression.
+  - covars_continuous [list[int], default=[]]: Indices of continuous variables that should be used as covariates in the regression.
+  - nan_value [float, default=-999.0]: Float value representing missing values in the given input data.
+  - axis [int, default=0]: Whether to consider rows in both input matrices as variables (axis=0) or columns (axis=1).
+  - threads [int, default=1]: How many threads to use in parallel computation.
+  - return_types [list[str], default=[]]: Which calculation results to return. Can be a list containing any of the following entries: `'LR_statistic'` for the likelihood-ratio statistic, `'n'` for the number of samples remaining for each pair of variables after removal of samples with missing values in the dependent variable, the predictor or any covariate, `'p_unadjusted'` for the uncorrected P-values, `'p_bonferroni'` for Bonferroni-corrected P-values, `'p_benjamini_hb'` for Benjamini-Hochberg correction, and `'p_benjamini_yek'` for Benjamini-Yekutieli correction. If the list is empty, all available results will be returned.
+  - use_numba [bool, default=False]: Whether to use the numba-based or C++ implementation of the test. Only the C++ implementation is available so far.
+
+  Based on the values specified in the return_types list, a dictionary storing the specified data matrices will be returned. All data matrices will have shape '(cat_data.shape[0], cat_data.shape[0] + cont_data.shape[0])'. To access the likelihood-ratio statistic and P-values for a categorical dependet variable at index 'i' and a continous predictor at index 'j', use the following indexing: `result_dict['LR_statistic'][i, cat_data.shape[0] + j]`.
+
+  Example call:
+
+  ```python
+  import napy
+  import numpy as np
+  cat_data = np.array([[0, 1, 2, 1, 0], [1, 1, 0, 2, 2]])
+  cont_data = np.array([[0.2, 1.3, 2.1, 1.8, 0.7], [2.4, 1.9, 0.5, 3.1, 2.8]])
+  NAN_VALUE = -99.0
+  result_dict = napy.multinomial_regression(cat_data, cont_data, covars_categorical=[1], covars_continuous=[1], nan_value=NAN_VALUE, axis=0, threads=1, return_types=['LR_statistic', 'p_unadjusted'])
+  # result_dict['LR_statistic'] stores likelihood-ratio statistics, result_dict['p_unadjusted'] stores unadjusted P-values
+  ```
+
+- **Linear regression:** The function `napy.linear_regression(cat_data, cont_data, covars_categorical=[], covars_continuous=[], nan_value=-999.0, axis=0, threads=1, return_types=[])` computes effect sizes of all categorical and continuous predictor variables from `cat_data` and `cont_data` on all continuous dependent variables from `cont_data`, adjusted for the given categorical and continuous covariates. For each pair, the full model `y ~ covariates + x` is compared against the reduced model `y ~ covariates` using ordinary least squares and a partial F-test. Categorical predictors and covariates are dummy-encoded with their lowest category as reference. Missing values are pairwisely ignored, i.e. only samples without missing values in the dependent variable, the predictor and all covariates are used. Pairs involving a covariate, self-regressions of a continuous variable, predictors that are constant or collinear with the covariates, and dependent variables that are constant or perfectly explained by the covariates return `numpy.nan`. The function takes the following arguments:
+
+  - cat_data [np.ndarray]: Numpy 2D array storing categorical variables data.
+  - cont_data [np.ndarray]: Numpy 2D array storing continuous variables data.
+  - covars_categorical [list[int], default=[]]: Indices of categorical variables that should be used as covariates in the regression.
+  - covars_continuous [list[int], default=[]]: Indices of continuous variables that should be used as covariates in the regression.
+  - nan_value [float, default=-999.0]: Float value representing missing values in the given input data.
+  - axis [int, default=0]: Whether to consider rows in both input matrices as variables (axis=0) or columns (axis=1).
+  - threads [int, default=1]: How many threads to use in parallel computation.
+  - return_types [list[str], default=[]]: Which calculation results to return. Can be a list containing any of the following entries: `'F'` for the partial F statistic, `'np2'` for partial eta squared (equals the squared partial correlation for continuous predictors), `'cohens_f2'` for Cohen's f², `'beta'` for the regression coefficient of the predictor, `'std_beta'` for the standardized regression coefficient, `'n'` for the number of samples remaining for each pair of variables after removal of samples with missing values in the dependent variable, the predictor or any covariate, `'p_unadjusted'` for the uncorrected P-values, `'p_bonferroni'` for Bonferroni-corrected P-values, `'p_benjamini_hb'` for Benjamini-Hochberg correction, and `'p_benjamini_yek'` for Benjamini-Yekutieli correction. `'beta'` and `'std_beta'` are only defined for continuous and binary predictors and are `numpy.nan` for categorical predictors with more than two categories. Since the test of a continuous variable on another continuous variable is identical to the test with swapped roles, these tests are only counted once in the multiple testing correction. If the list is empty, all available results will be returned.
+
+  Based on the values specified in the return_types list, a dictionary storing the specified data matrices will be returned. All data matrices will have shape `(cont_data.shape[0], cat_data.shape[0] + cont_data.shape[0])`. To access the results for a continuous dependent variable at index `i` and a categorical predictor at index `j`, use `result_dict['np2'][i, j]`; for a continuous predictor at index `j`, use `result_dict['np2'][i, cat_data.shape[0] + j]`.
+
+  Example call:
+
+  ```python
+  import napy
+  import numpy as np
+  cat_data = np.array([[0, 1, 2, 1, 0, 2, 1], [1, 1, 0, 0, 1, 0, 1]])
+  cont_data = np.array([[0.2, 1.3, 2.1, 1.8, 0.7, 2.5, -99], [2.4, 1.9, 0.5, 3.1, 2.8, 0.9, 1.5], [1.0, 2.0, 1.5, 3.0, 2.2, 1.1, 0.4]])
+  NAN_VALUE = -99.0
+  result_dict = napy.linear_regression(cat_data, cont_data, covars_categorical=[1], covars_continuous=[2], nan_value=NAN_VALUE, axis=0, threads=1, return_types=['np2', 'beta', 'p_unadjusted'])
+  # result_dict['np2'] stores partial eta squared, result_dict['beta'] regression coefficients, result_dict['p_unadjusted'] unadjusted P-values
+  ```
 
 # Citation
 
